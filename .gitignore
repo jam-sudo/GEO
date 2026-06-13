@@ -23,6 +23,17 @@ projects/*/data/*.rds
 # --- Conda ---
 environment/.conda/
 
+# --- Python CLI (geo_portfolio) ---
+.venv/
+venv/
+.geo_cache/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
 # --- OS ---
 .DS_Store
 Thumbs.db

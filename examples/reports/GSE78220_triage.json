@@ -1,0 +1,321 @@
+{
+  "accession": "GSE78220",
+  "title": "mRNA expressions in pre-treatment melanomas undergoing anti-PD-1 checkpoint inhibition therapy",
+  "organism": "Homo sapiens",
+  "organisms": [
+    "Homo sapiens"
+  ],
+  "assay_type": "bulk RNA-seq",
+  "platform": "GPL11154",
+  "series_type": "Expression profiling by high throughput sequencing",
+  "n_samples": 28,
+  "processed_files": [
+    {
+      "name": "GSE78220_PatientFPKM.xlsx",
+      "type": "fpkm"
+    }
+  ],
+  "raw_counts_available": "no",
+  "normalized_values_present": "yes",
+  "groups": [
+    {
+      "name": "Dead",
+      "n_replicates": 12
+    },
+    {
+      "name": "Alive",
+      "n_replicates": 16
+    }
+  ],
+  "min_replicates_per_group": 12,
+  "metadata_clarity": "clear",
+  "possible_contrasts": [
+    "Dead vs Alive"
+  ],
+  "recommended_design": "~ batch + disease",
+  "de_method": "DESeq2 (requires raw counts; FPKM not valid input)",
+  "decision": "conditional",
+  "organism_db": "org.Hs.eg.db",
+  "suitability_class": "manual_review",
+  "suitability_score": 65,
+  "score_reasons": [
+    {
+      "delta": 10,
+      "text": "Bulk RNA-seq assay."
+    },
+    {
+      "delta": -15,
+      "text": "Only normalized values (FPKM/TPM/RPKM) found; no raw counts in the deposit."
+    },
+    {
+      "delta": 10,
+      "text": "Grouping factor 'disease' has >=3 replicates per level."
+    },
+    {
+      "delta": 10,
+      "text": "Groups encoded in characteristics field ('vital status')."
+    }
+  ],
+  "warnings": [
+    "Normalized-only: do NOT use FPKM/TPM as DESeq2 input. Obtain raw counts from SRA/recount3/ARCHS4."
+  ],
+  "factors": [
+    {
+      "factor": "batch",
+      "source_key": "patient id",
+      "levels": {
+        "Pt1": 1,
+        "Pt2": 1,
+        "Pt4": 1,
+        "Pt5": 1,
+        "Pt6": 1,
+        "Pt7": 1,
+        "Pt8": 1,
+        "Pt9": 1,
+        "Pt10": 1,
+        "Pt12": 1,
+        "Pt13": 1,
+        "Pt14": 1,
+        "Pt15": 1,
+        "Pt16": 1,
+        "Pt19": 1,
+        "Pt20": 1,
+        "Pt22": 1,
+        "Pt23": 1,
+        "Pt25": 1,
+        "Pt27": 2,
+        "Pt28": 1,
+        "Pt29": 1,
+        "Pt31": 1,
+        "Pt32": 1,
+        "Pt35": 1,
+        "Pt37": 1,
+        "Pt38": 1
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "disease",
+      "source_key": "anti-pd-1 response",
+      "levels": {
+        "Progressive Disease": 13,
+        "Partial Response": 10,
+        "Complete Response": 5
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "tissue",
+      "source_key": "study site",
+      "levels": {
+        "UCLA": 23,
+        "VIC": 5
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "unknown",
+      "source_key": "gender",
+      "levels": {
+        "F": 8,
+        "M": 20
+      },
+      "ambiguous": true,
+      "note": "characteristics key did not map to a known factor type"
+    },
+    {
+      "factor": "timepoint",
+      "source_key": "age (yrs)",
+      "levels": {
+        "66": 1,
+        "55": 3,
+        "62": 1,
+        "61": 1,
+        "51": 1,
+        "69": 1,
+        "68": 1,
+        "60": 1,
+        "59": 1,
+        "53": 1,
+        "27": 1,
+        "70": 2,
+        "19": 1,
+        "45": 1,
+        "63": 2,
+        "74": 1,
+        "83": 2,
+        "82": 1,
+        "84": 1,
+        "47": 2,
+        "65": 1,
+        "57": 1
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "disease",
+      "source_key": "disease status",
+      "levels": {
+        "M1b": 3,
+        "M1c": 22,
+        "M1a": 2,
+        "M0": 1
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "timepoint",
+      "source_key": "overall survival (days)",
+      "levels": {
+        "607": 1,
+        "927": 1,
+        "948": 1,
+        "439": 2,
+        "882": 1,
+        "662": 1,
+        "NA": 1,
+        "1054": 1,
+        "387": 1,
+        "327": 1,
+        "917": 1,
+        "54": 1,
+        "980": 1,
+        "186": 1,
+        "1060": 1,
+        "337": 1,
+        "182": 1,
+        "103": 1,
+        "262": 1,
+        "548": 2,
+        "269": 1,
+        "704": 1,
+        "171": 1,
+        "427": 1,
+        "364": 1,
+        "448": 1
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "disease",
+      "source_key": "vital status",
+      "levels": {
+        "Dead": 12,
+        "Alive": 16
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "unknown",
+      "source_key": "previous mapki",
+      "levels": {
+        "N": 16,
+        "Y": 12
+      },
+      "ambiguous": true,
+      "note": "characteristics key did not map to a known factor type"
+    },
+    {
+      "factor": "tissue",
+      "source_key": "anatomical location",
+      "levels": {
+        "L post. Thigh, inf., SC": 1,
+        "Lung": 3,
+        "Adrenal": 1,
+        "L Chestwall, SC": 1,
+        "L forearm, SC": 2,
+        "Crown/scalp, SC": 1,
+        "R leg, SC": 1,
+        "Neck, SC": 1,
+        "L lower abdomen, SC": 1,
+        "Lower back, SC": 1,
+        "R neck, SC": 1,
+        "R clavicle, LN": 1,
+        "Chest, SC": 1,
+        "L clavicle": 1,
+        "Left Flank, SC": 1,
+        "Left Leg, SC": 1,
+        "L Outer Inguinal": 1,
+        "R upper arm": 1,
+        "R upper back": 1,
+        "Scalp, SC": 1,
+        "Sigmoid colon": 1,
+        "Abdominal wall": 1,
+        "Flank": 1,
+        "Small bowel": 1,
+        "Cervical, LN": 1
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "unknown",
+      "source_key": "nras",
+      "levels": {
+        "Q61L": 1,
+        "G13D": 1,
+        "Q61K": 1,
+        "Q61R": 1,
+        "T50I": 2
+      },
+      "ambiguous": true,
+      "note": "characteristics key did not map to a known factor type"
+    },
+    {
+      "factor": "timepoint",
+      "source_key": "biopsy time",
+      "levels": {
+        "pre-treatment": 27,
+        "on-treatment": 1
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "unknown",
+      "source_key": "stranded/unstranded rnaseq",
+      "levels": {
+        "unstranded": 21,
+        "stranded": 7
+      },
+      "ambiguous": true,
+      "note": "characteristics key did not map to a known factor type"
+    },
+    {
+      "factor": "unknown",
+      "source_key": "nf1",
+      "levels": {
+        "Frame_Shift_Ins H31fs, Splice_Site": 1,
+        "S2597*": 1,
+        "R2349C": 1,
+        "Q1255*": 1,
+        "K615K Splice Site": 1,
+        "R1653C": 1
+      },
+      "ambiguous": true,
+      "note": "characteristics key did not map to a known factor type"
+    },
+    {
+      "factor": "unknown",
+      "source_key": "braf",
+      "levels": {
+        "L331F": 1,
+        "V600E": 9,
+        "V600R": 1,
+        "V600K": 2,
+        "K483T, D594N": 1
+      },
+      "ambiguous": true,
+      "note": "characteristics key did not map to a known factor type"
+    }
+  ],
+  "next_action": "Obtain raw counts (recount3/SRA), then re-triage and scaffold.",
+  "generated_by": "geo_portfolio CLI"
+}

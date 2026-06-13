@@ -1,0 +1,7 @@
+# Example GEO accessions for `geo batch`
+# (blank lines and lines starting with # are ignored)
+
+GSE157830   # PDAC GOT1 knockdown — raw counts -> include
+GSE60450    # mouse mammary — raw counts -> include
+GSE78220    # melanoma anti-PD-1 — FPKM only -> conditional
+GSE2034     # breast cancer — microarray -> exclude

@@ -55,6 +55,10 @@ decided from evidence — file inventory, value ranges, `characteristics` fields
 │   └── README.md                  # methodology & conventions
 ├── Makefile                       # make triage / env / new / render
 ├── environment/environment.yml    # pinned R + Bioconductor + Quarto (mamba)
+├── pyproject.toml                 # installs the `geo` CLI (console script)
+├── geo_portfolio/                 # Python CLI / orchestration layer (no analysis logic)
+│   ├── cli.py  fetch.py  parse.py  suitability.py  report.py  scaffold.py  runner.py
+├── tests/                         # CLI + triage unit tests (+ live tests, marked)
 ├── scripts/
 │   ├── geo_helpers.R              # reusable analysis engine (incl. the data-type gate)
 │   ├── build_triage.R             # aggregate suitability records -> TRIAGE.md
@@ -83,6 +87,83 @@ make triage
 # Analyze only datasets whose decision is "include".
 make render PROJ=GSE123456
 ```
+
+## Command-line interface: `geo`
+
+A Python CLI (`geo_portfolio`) wraps the same workflow for the terminal. It is an
+**orchestration layer only** — it triages accessions, writes reports in the
+existing `SUITABILITY.md` schema, scaffolds from the existing template, and calls
+the existing R/Quarto analysis. It does **not** reimplement any analysis. Full
+reference: [`docs/cli.md`](docs/cli.md).
+
+### Install
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -e .            # console script is exactly: geo
+geo --help
+```
+
+### Example commands
+
+```bash
+geo triage GSE157830                                            # decide, print summary
+geo triage GSE157830 --out examples/reports/GSE157830 --format markdown,json
+geo batch examples/accessions.txt --out examples/reports        # many at once + summary
+geo init-project GSE157830 --out projects/GSE157830 --with-triage-report
+geo run GSE157830 --project projects/GSE157830                  # gated on triage = include
+```
+
+### Example output
+
+```
+╭───────────────── SUITABLE · score 100/100 ─────────────────╮
+│  accession  GSE157830                                       │
+│      assay  bulk RNA-seq                                    │
+│ raw counts  yes                                             │
+│     design  ~ genotype                                      │
+│  DE method  DESeq2                                          │
+│   decision  include                                         │
+╰──────────────────────── GSE157830 ─────────────────────────╯
+```
+
+Batch triage of the four portfolio datasets reproduces the curated decisions:
+
+| accession | assay | raw counts | class | decision |
+|-----------|-------|-----------|-------|----------|
+| GSE157830 | bulk RNA-seq | yes | suitable | **include** |
+| GSE60450 | bulk RNA-seq | yes | suitable | **include** |
+| GSE78220 | bulk RNA-seq | no (FPKM only) | manual_review | **conditional** |
+| GSE2034 | microarray | no | unsuitable | **exclude** |
+
+### How `geo` connects to the existing workflow
+
+The triage markdown uses the **same YAML front-matter** as the hand-written
+`projects/*/SUITABILITY.md`, so `scripts/build_triage.R` aggregates CLI output
+into `docs/TRIAGE.md` unchanged. `geo scaffold` copies
+`templates/project_template/`; `geo run` calls `mamba run -n geo-rnaseq quarto
+render`. Recommended loop:
+
+```bash
+geo triage GSE123456 --out examples/reports/GSE123456    # decide
+geo init-project GSE123456 --with-triage-report          # scaffold (include/conditional)
+Rscript scripts/build_triage.R                           # refresh docs/TRIAGE.md
+geo run GSE123456                                        # analyze (include only)
+```
+
+### Limitations
+
+- Triage is **metadata-only** — it does not inspect count *values* (e.g. it can't
+  see RSEM fractional counts; the R `run_deseq2()` guard catches that at analysis time).
+- Factor inference is heuristic — review reports before scaffolding.
+- `geo run` needs the `geo-rnaseq` mamba environment.
+
+### Conservative by design
+
+Never claims DESeq2 compatibility without a detected raw **count** file; never
+treats FPKM/TPM/RPKM as DESeq2 input; never infers groups from vague titles
+(only `characteristics` fields; ambiguous ones are flagged); when uncertain →
+**manual review**.
 
 ## What "demonstrates judgment" means here concretely
 

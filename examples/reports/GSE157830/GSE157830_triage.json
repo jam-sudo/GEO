@@ -1,0 +1,204 @@
+{
+  "accession": "GSE157830",
+  "title": "Labile Iron Release Primes Pancreatic Cancer for Ferroptosis",
+  "organism": "Homo sapiens",
+  "organisms": [
+    "Homo sapiens"
+  ],
+  "assay_type": "bulk RNA-seq",
+  "platform": "GPL24676",
+  "series_type": "Expression profiling by high throughput sequencing",
+  "n_samples": 12,
+  "processed_files": [
+    {
+      "name": "GSE157830_RAW.tar",
+      "type": "archive"
+    },
+    {
+      "name": "GSE157830_genes.FPKM.txt.gz",
+      "type": "fpkm"
+    },
+    {
+      "name": "GSE157830_genes.TPM.txt.gz",
+      "type": "tpm"
+    },
+    {
+      "name": "GSE157830_genes.counts.txt.gz",
+      "type": "raw_counts"
+    },
+    {
+      "name": "GSE157830_isoforms.FPKM.txt.gz",
+      "type": "fpkm"
+    },
+    {
+      "name": "GSE157830_isoforms.TPM.txt.gz",
+      "type": "tpm"
+    },
+    {
+      "name": "GSE157830_isoforms.counts.txt.gz",
+      "type": "raw_counts"
+    },
+    {
+      "name": "GSM4775595_Tu8902_shGOT1_mnsdox_1.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775595_Tu8902_shGOT1_mnsdox_1.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775596_Tu8902_shGOT1_mnsdox_2.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775596_Tu8902_shGOT1_mnsdox_2.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775597_Tu8902_shGOT1_mnsdox_3.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775597_Tu8902_shGOT1_mnsdox_3.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775598_Tu8902_shGOT1_plsdox_1.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775598_Tu8902_shGOT1_plsdox_1.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775599_Tu8902_shGOT1_plsdox_2.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775599_Tu8902_shGOT1_plsdox_2.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775600_Tu8902_shGOT1_plsdox_3.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775600_Tu8902_shGOT1_plsdox_3.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775601_Mia_shGOT1_mnsdox_1.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775601_Mia_shGOT1_mnsdox_1.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775602_Mia_shGOT1_mnsdox_2.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775602_Mia_shGOT1_mnsdox_2.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775603_Mia_shGOT1_mnsdox_3.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775603_Mia_shGOT1_mnsdox_3.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775604_Mia_shGOT1_plsdox_1.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775604_Mia_shGOT1_plsdox_1.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775605_Mia_shGOT1_plsdox_2.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775605_Mia_shGOT1_plsdox_2.isoforms.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775606_Mia_shGOT1_plsdox_3.genes.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM4775606_Mia_shGOT1_plsdox_3.isoforms.txt.gz",
+      "type": "other"
+    }
+  ],
+  "raw_counts_available": "yes",
+  "normalized_values_present": "yes",
+  "groups": [
+    {
+      "name": "control",
+      "n_replicates": 6
+    },
+    {
+      "name": "GOT1 knockdown",
+      "n_replicates": 6
+    }
+  ],
+  "min_replicates_per_group": 6,
+  "metadata_clarity": "clear",
+  "possible_contrasts": [
+    "control vs GOT1 knockdown"
+  ],
+  "recommended_design": "~ genotype",
+  "de_method": "DESeq2",
+  "decision": "include",
+  "organism_db": "org.Hs.eg.db",
+  "suitability_class": "suitable",
+  "suitability_score": 100,
+  "score_reasons": [
+    {
+      "delta": 10,
+      "text": "Bulk RNA-seq assay."
+    },
+    {
+      "delta": 30,
+      "text": "Raw count file detected in supplementary files."
+    },
+    {
+      "delta": 10,
+      "text": "Grouping factor 'genotype' has >=3 replicates per level."
+    },
+    {
+      "delta": 10,
+      "text": "Groups encoded in characteristics field ('genotype/variation')."
+    }
+  ],
+  "warnings": [],
+  "factors": [
+    {
+      "factor": "cell_line",
+      "source_key": "cell line",
+      "levels": {
+        "Tu8902": 6,
+        "MiaPaCa2": 6
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "genotype",
+      "source_key": "genotype/variation",
+      "levels": {
+        "control": 6,
+        "GOT1 knockdown": 6
+      },
+      "ambiguous": false,
+      "note": ""
+    }
+  ],
+  "next_action": "Scaffold and run the analysis (geo init-project … then geo run …).",
+  "generated_by": "geo_portfolio CLI"
+}

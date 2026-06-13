@@ -1,0 +1,137 @@
+{
+  "accession": "GSE60450",
+  "title": "Transcriptome analysis of luminal and basal cell subpopulations in the lactating versus pregnant mammary gland",
+  "organism": "Mus musculus",
+  "organisms": [
+    "Mus musculus"
+  ],
+  "assay_type": "bulk RNA-seq",
+  "platform": "GPL13112",
+  "series_type": "Expression profiling by high throughput sequencing",
+  "n_samples": 12,
+  "processed_files": [
+    {
+      "name": "GSE60450_Lactation-GenewiseCounts.txt.gz",
+      "type": "raw_counts"
+    },
+    {
+      "name": "GSE60450_RAW.tar",
+      "type": "archive"
+    },
+    {
+      "name": "GSM1480291_MCL1-LA_BC2CTUACXX_GATCAG_L001_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480292_MCL1-LB_BC2CTUACXX_TGACCA_L001_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480293_MCL1-LC_BC2CTUACXX_GCCAAT_L001_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480294_MCL1-LD_BC2CTUACXX_GGCTAC_L001_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480295_MCL1-LE_BC2CTUACXX_TAGCTT_L001_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480296_MCL1-LF_BC2CTUACXX_CTTGTA_L001_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480297_MCL1-DG_BC2CTUACXX_ACTTGA_L002_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480298_MCL1-DH_BC2CTUACXX_CAGATC_L002_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480299_MCL1-DI_BC2CTUACXX_ACAGTG_L002_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480300_MCL1-DJ_BC2CTUACXX_CGATGT_L002_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480301_MCL1-DK_BC2CTUACXX_TTAGGC_L002_R1.txt.gz",
+      "type": "other"
+    },
+    {
+      "name": "GSM1480302_MCL1-DL_BC2CTUACXX_ATCACG_L002_R1.txt.gz",
+      "type": "other"
+    }
+  ],
+  "raw_counts_available": "yes",
+  "normalized_values_present": "no",
+  "groups": [
+    {
+      "name": "luminal cell population",
+      "n_replicates": 6
+    },
+    {
+      "name": "basal cell population",
+      "n_replicates": 6
+    }
+  ],
+  "min_replicates_per_group": 6,
+  "metadata_clarity": "clear",
+  "possible_contrasts": [
+    "luminal cell population vs basal cell population"
+  ],
+  "recommended_design": "~ disease",
+  "de_method": "DESeq2",
+  "decision": "include",
+  "organism_db": "org.Mm.eg.db",
+  "suitability_class": "suitable",
+  "suitability_score": 100,
+  "score_reasons": [
+    {
+      "delta": 10,
+      "text": "Bulk RNA-seq assay."
+    },
+    {
+      "delta": 30,
+      "text": "Raw count file detected in supplementary files."
+    },
+    {
+      "delta": 10,
+      "text": "Grouping factor 'disease' has >=3 replicates per level."
+    },
+    {
+      "delta": 10,
+      "text": "Groups encoded in characteristics field ('immunophenotype')."
+    }
+  ],
+  "warnings": [],
+  "factors": [
+    {
+      "factor": "disease",
+      "source_key": "immunophenotype",
+      "levels": {
+        "luminal cell population": 6,
+        "basal cell population": 6
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "disease",
+      "source_key": "developmental stage",
+      "levels": {
+        "virgin": 4,
+        "18.5 day pregnancy": 4,
+        "2 day lactation": 4
+      },
+      "ambiguous": false,
+      "note": ""
+    }
+  ],
+  "next_action": "Scaffold and run the analysis (geo init-project … then geo run …).",
+  "generated_by": "geo_portfolio CLI"
+}
