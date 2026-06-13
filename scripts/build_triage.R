@@ -41,6 +41,7 @@ rows <- lapply(files, function(f) {
     design       = scalar(fm$recommended_design),
     method       = scalar(fm$de_method),
     decision     = scalar(fm$decision),
+    promoted_from = scalar(fm$promoted_from),
     reason       = scalar((fm$decision_reasons %||% list(NA))[[1]]),
     stringsAsFactors = FALSE)
 })
@@ -53,10 +54,14 @@ dir.create("docs", showWarnings = FALSE)
 write.csv(tab, "docs/triage.csv", row.names = FALSE)
 
 # ---- Render docs/TRIAGE.md ----
-md_row <- function(r) sprintf(
-  "| [%s](../projects/%s/SUITABILITY.md) | %s | %s | %s | %s | %s | %s | `%s` | %s | **%s** |",
-  r$accession, r$accession, r$organism, r$assay, r$n_samples, r$raw_counts,
-  r$normalized, r$metadata, r$design, r$method, toupper(r$decision))
+md_row <- function(r) {
+  dec <- toupper(r$decision)
+  if (!is.na(r$promoted_from)) dec <- paste0(dec, " (promoted from ", r$promoted_from, ")")
+  sprintf(
+    "| [%s](../projects/%s/SUITABILITY.md) | %s | %s | %s | %s | %s | %s | `%s` | %s | **%s** |",
+    r$accession, r$accession, r$organism, r$assay, r$n_samples, r$raw_counts,
+    r$normalized, r$metadata, r$design, r$method, dec)
+}
 
 header <- c(
   "# Cross-dataset triage",

@@ -104,12 +104,12 @@ See **[`docs/TRIAGE.md`](docs/TRIAGE.md)** for the live table. Current datasets:
 |---------|----------|----------|----------|-----|
 | [GSE157830](projects/GSE157830/) | *H. sapiens* | GOT1 knockdown vs control in PDAC | **include** ✓ rendered | gene-level raw counts; 933 DEGs, GOT1 top hit |
 | [GSE60450](projects/GSE60450/) | *M. musculus* | luminal vs basal mammary cells across stages | **include** ✓ rendered | raw count matrix; 7,347 DEGs, markers validate labels |
-| [GSE78220](projects/GSE78220/) | *H. sapiens* | anti-PD-1 responders vs non-responders | **conditional** | RNA-seq but **FPKM-only**; needs SRA/recount3 counts |
+| [GSE78220](projects/GSE78220/) | *H. sapiens* | anti-PD-1 responders vs non-responders | **include** ✓ promoted | FPKM-only on GEO → **promoted** with recount3 counts; 415 DEGs (IPRES signature) |
 | [GSE2034](projects/GSE2034/) | *H. sapiens* | breast-cancer metastasis vs relapse-free | **exclude** | **microarray**, not RNA-seq — wrong assay for DESeq2 |
 
-Two `include`d, one `conditional` (rescuable from SRA), one `exclude`d (wrong
-assay) — the spread is the point: triage that can say *no* and *not yet*, not
-just *yes*.
+Three analyzed (one **promoted** from conditional by sourcing recount3 counts
+instead of running DESeq2 on FPKM) and one **excluded** for wrong assay — the
+spread is the point: triage that can say *yes*, *not yet → fixed*, and *no*.
 
 ## Disclaimer
 

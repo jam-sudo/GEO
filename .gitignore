@@ -16,6 +16,8 @@ projects/*/data/*.gz
 projects/*/data/*.tar
 projects/*/data/*.zip
 projects/*/data/*.CEL
+# reproducible intermediates (e.g. recount3 counts) — regenerate via scripts
+projects/*/data/*.rds
 *.sqlite
 
 # --- Conda ---

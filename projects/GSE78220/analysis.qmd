@@ -1,0 +1,191 @@
+---
+title: "Anti-PD-1 responders vs non-responders in melanoma — GSE78220"
+subtitle: "GEO RNA-seq Portfolio · differential expression re-analysis (recount3 counts)"
+author: "jam-sudo"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-tools: true
+    theme: cosmo
+    embed-resources: true
+    fig-width: 7
+    fig-height: 5
+execute:
+  warning: true
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(here)
+source(here("scripts", "geo_helpers.R"))
+suppressPackageStartupMessages({
+  library(DESeq2)
+  library(clusterProfiler)
+})
+
+ACC      <- "GSE78220"
+ORGDB    <- "org.Hs.eg.db"
+PROJ_DIR <- here("projects", ACC)
+FIG_DIR  <- file.path(PROJ_DIR, "results", "figures")
+TAB_DIR  <- file.path(PROJ_DIR, "results", "tables")
+dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
+dir.create(TAB_DIR, recursive = TRUE, showWarnings = FALSE)
+RDS <- file.path(PROJ_DIR, "data", "GSE78220_recount3_counts.rds")
+```
+
+## Biological question & why this needed promotion
+
+Melanoma patients vary widely in their response to anti-PD-1 checkpoint
+inhibitors. This dataset (Hugo *et al.*, 2016) profiled **pre-treatment** tumor
+biopsies by RNA-seq to look for transcriptional correlates of response.
+
+> **Question:** Which genes differ in pre-treatment melanomas between patients
+> who later **respond** (Complete/Partial Response) vs **do not respond**
+> (Progressive Disease) to anti-PD-1?
+
+**Triage note — this dataset was `conditional`, then promoted to `include`.**
+GEO deposits only an **FPKM** matrix for GSE78220
+(`GSE78220_PatientFPKM.xlsx`), which is *not* valid input for DESeq2. Rather than
+run a count model on normalized values, we obtained **raw gene-level counts from
+recount3** (study **SRP070710**, recount3 reprocessing of the SRA reads) — see
+[`scripts/prep_counts.R`](scripts/prep_counts.R). The full reasoning is in
+[`SUITABILITY.md`](SUITABILITY.md).
+
+- **Accession:** [GSE78220](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE78220) · *Homo sapiens* · Illumina HiSeq 2000 · counts via recount3.
+
+## 1. Load recount3 counts & cleaned metadata
+
+```{r load}
+obj      <- readRDS(RDS)
+counts   <- obj$counts                                  # integer, genes x patients
+meta     <- obj$meta
+gene_anno <- data.frame(gene_id = obj$gene_id,
+                        symbol  = as.character(obj$rowdata$gene_name),
+                        gene_type = as.character(obj$rowdata$gene_type),
+                        stringsAsFactors = FALSE)
+
+meta$response <- factor(meta$response, levels = c("non_responder", "responder"))
+stopifnot(identical(colnames(counts), rownames(meta)))
+cat("Counts:", nrow(counts), "genes x", ncol(counts), "patients\n")
+print(table(meta$response))
+write_results_table(meta, file.path(TAB_DIR, paste0(ACC, "_metadata_clean.csv")))
+```
+
+Response labels were extracted by scanning **all** `characteristics_ch1.*`
+fields per sample (they are ragged in this record) and dichotomizing RECIST
+categories: **responder** = Complete/Partial Response (n = 15), **non-responder**
+= Progressive Disease (n = 13). No Stable Disease cases were present.
+
+## 2. Differential expression (DESeq2)
+
+```{r deseq2}
+de <- run_deseq2(
+  counts   = counts,
+  coldata  = meta,
+  design   = ~ response,
+  contrast = c("response", "responder", "non_responder")
+)
+res_shrink <- lfcShrink(de$dds, coef = "response_responder_vs_non_responder", type = "apeglm")
+de$res_df$log2FoldChange_shrunk <- res_shrink[de$res_df$gene_id, "log2FoldChange"]
+
+de$res_df <- dplyr::left_join(de$res_df, gene_anno, by = "gene_id")
+write_results_table(de$res_df, file.path(TAB_DIR, paste0(ACC, "_DE_results.csv")))
+summary(de$res)
+cat("Significant (padj<0.05, |log2FC|>1):",
+    sum(!is.na(de$res_df$padj) & de$res_df$padj < 0.05 & abs(de$res_df$log2FoldChange) > 1), "\n")
+```
+
+## 3. Quality control
+
+```{r qc}
+save_fig(plot_library_sizes(counts, meta$response), file.path(FIG_DIR, "qc_library_sizes.png"), height = 6)
+save_fig(plot_count_distribution(counts, meta$response), file.path(FIG_DIR, "qc_count_distribution.png"), height = 6)
+
+vsd_mat <- SummarizedExperiment::assay(de$vsd)
+pc <- prcomp(t(vsd_mat)); ve <- round(100 * pc$sdev^2 / sum(pc$sdev^2), 1)
+pca_df <- data.frame(PC1 = pc$x[,1], PC2 = pc$x[,2], meta)
+p_pca <- ggplot(pca_df, aes(PC1, PC2, color = response, label = patient)) +
+  geom_point(size = 3) + ggrepel::geom_text_repel(size = 2.5, max.overlaps = 30, show.legend = FALSE) +
+  scale_color_manual(values = c(non_responder = "#d95f02", responder = "#1b9e77")) +
+  labs(title = "PCA (variance-stabilized)", color = "Response",
+       x = paste0("PC1 (", ve[1], "%)"), y = paste0("PC2 (", ve[2], "%)")) + geo_theme()
+save_fig(p_pca, file.path(FIG_DIR, "qc_pca.png"))
+plot_sample_correlation(vsd_mat, group = meta$response,
+                        file = file.path(FIG_DIR, "qc_sample_correlation.png"))
+p_pca
+```
+
+## 4. DE figures
+
+```{r de-figs}
+save_fig(volcano_plot(de$res_df, title = "Responder vs non-responder"), file.path(FIG_DIR, "volcano.png"))
+save_fig(ma_plot(de$res_df, title = "MA plot — responder vs non-responder"), file.path(FIG_DIR, "ma_plot.png"))
+top_gene_heatmap(de$vsd, de$res_df, n = 30, group = meta$response,
+                 file = file.path(FIG_DIR, "top_genes_heatmap.png"), id_col = "gene_id", label_col = "symbol")
+volcano_plot(de$res_df, title = "Responder vs non-responder")
+```
+
+```{r de-table}
+knitr::kable(head(de$res_df[order(de$res_df$padj),
+                            c("symbol","gene_id","baseMean","log2FoldChange","padj")], 25),
+             digits = 3, caption = "Top 25 DE genes (responder vs non-responder)")
+```
+
+## 5. Functional enrichment (GO BP)
+
+```{r enrich}
+enr <- run_enrichment(de$res_df, orgdb = ORGDB, keytype = "ENSEMBL",
+                      id_col = "gene_id", padj_thresh = 0.05, lfc_thresh = 1)
+if (!is.null(enr) && !is.null(enr$go_bp) && nrow(as.data.frame(enr$go_bp)) > 0) {
+  write_results_table(as.data.frame(enr$go_bp), file.path(TAB_DIR, paste0(ACC, "_GO_BP_enrichment.csv")))
+  save_fig(barplot(enr$go_bp, showCategory = 15) + ggtitle("GO BP enrichment"),
+           file.path(FIG_DIR, "go_bp_enrichment.png"), height = 7)
+  knitr::kable(head(as.data.frame(enr$go_bp)[, c("ID","Description","p.adjust","Count")], 15),
+               caption = "Top GO biological-process terms")
+} else cat("No significant GO-BP enrichment returned (small DE set is plausible here).\n")
+```
+
+## 6. Interpretation
+
+*Grounded in the rendered results (30,348 genes tested; **415 significant** at
+`padj < 0.05`, `|log2FC| > 1`; 767 at padj < 0.1).*
+
+- **A modest but real signal — as expected.** Response to immunotherapy is a
+  contexture-level phenotype, so a few hundred DE genes (not thousands) is the
+  biologically honest outcome here, not a disappointment.
+- **Non-responders carry a mesenchymal/ECM program.** Genes higher in
+  non-responders include **MMP1**, **FOXC2**, and a cluster of extracellular-
+  matrix genes; GO biological process is led by **extracellular-matrix
+  organization, blood-vessel diameter regulation, and (smooth-)muscle
+  contraction**. This recapitulates the **IPRES** ("Innate anti-PD-1
+  Resistance") mesenchymal/ECM/angiogenesis transcriptional signature reported in
+  the original study — a strong external validation.
+- **The promotion mattered.** This biologically sensible result is only valid
+  because it was computed on recount3 **raw counts**. Running DESeq2 on the
+  deposited FPKM would have been statistically improper; the conditional → include
+  promotion is what made a correct analysis possible.
+
+## 7. Limitations
+
+- **Promoted dataset:** counts are recount3's uniform reprocessing of SRA
+  (SRP070710), not the authors' own count pipeline — quantification choices
+  differ slightly from the original study.
+- **Clinical, heterogeneous cohort:** pre-treatment biopsies vary in tumor
+  purity, site, and mutational background (BRAF/NRAS/NF1) — none of which are
+  modelled here; the simple `~ response` design may leave confounding.
+- **Within-patient pair:** Pt27A and Pt27B are two biopsies from one patient
+  (both responders) — a mild violation of independence.
+- Response is dichotomized from RECIST (CR/PR vs PD); alternative groupings
+  (e.g. including stable disease, or durable benefit) could shift results.
+- Expect a **modest DE signal**: response correlates are often subtle and immune-
+  contexture-driven rather than large single-gene shifts.
+
+## Reproducibility
+
+```{r session}
+sessionInfo()
+```

@@ -7,28 +7,31 @@ platform: "GPL11154 (Illumina HiSeq 2000)"
 n_samples: 28
 processed_files:
   - {name: "GSE78220_PatientFPKM.xlsx", type: fpkm}
-raw_counts_available: "no"
+  - {name: "recount3 SRP070710 (gene_sums)", type: raw_counts}
+raw_counts_available: "recount3"
 normalized_values_present: "yes"
 groups:
-  - {name: "responder", n_replicates: null}
-  - {name: "non_responder", n_replicates: null}
-min_replicates_per_group: null
+  - {name: "responder (CR/PR)", n_replicates: 15}
+  - {name: "non_responder (PD)", n_replicates: 13}
+min_replicates_per_group: 13
 metadata_clarity: moderate
 possible_contrasts:
-  - "anti-PD-1 responder vs non-responder"
-recommended_design: "~ response  (valid ONLY on raw counts re-derived from SRA/recount3)"
-de_method: "DESeq2 (requires raw counts; FPKM as deposited is not valid input)"
-decision: conditional
+  - "anti-PD-1 responder (CR/PR) vs non-responder (PD)"
+recommended_design: "~ response"
+de_method: "DESeq2 (recount3 counts)"
+decision: include
+promoted_from: conditional
 decision_reasons:
-  - "RNA-seq, but the ONLY deposited expression file is FPKM (GSE78220_PatientFPKM.xlsx) — DESeq2/edgeR must not be run on FPKM."
-  - "Raw counts are recoverable: reprocess SRA SRP070710, or pull precomputed counts from recount3/ARCHS4 — then this becomes INCLUDE."
+  - "PROMOTED from conditional: GEO deposits only FPKM, but raw gene counts were obtained from recount3 (SRP070710), making DESeq2 valid."
+  - "Balanced cohort: 15 responders (CR/PR) vs 13 non-responders (PD), no ambiguous stable-disease cases."
 ---
 
 # Dataset suitability report — GSE78220
 
-> Verdict: **CONDITIONAL** — a genuine RNA-seq study with a strong biological
-> question, but the data **as deposited** cannot go into DESeq2. This is exactly
-> the trap the framework exists to catch.
+> Verdict: **INCLUDE (promoted from CONDITIONAL).** As deposited on GEO this
+> dataset is FPKM-only and could not enter DESeq2; we promoted it by pulling raw
+> counts from recount3. This conditional → include arc is the judgment the
+> portfolio is built to show.
 
 ## 1. Identity
 
@@ -46,21 +49,27 @@ decision_reasons:
 
 | File | Type | Use for DE? |
 |------|------|-------------|
-| `GSE78220_PatientFPKM.xlsx` | **FPKM (normalized)** | **NO** |
+| `GSE78220_PatientFPKM.xlsx` (GEO) | FPKM (normalized) | **NO** |
+| recount3 `SRP070710` gene_sums | **raw gene counts** | **YES** (used) |
 
-- **Raw counts available?** **No** — no count matrix is deposited.
-- **TPM/FPKM/normalized present?** Yes — **FPKM only**, in an Excel file.
+- **Raw counts in the GEO deposit?** No. **Obtained from recount3** (uniform SRA
+  reprocessing) — see [`scripts/prep_counts.R`](scripts/prep_counts.R).
+- **Normalized values present?** Yes — FPKM, on GEO (not used).
 
 ## 3. Replication & groups
 
-28 tumors split into anti-PD-1 **responders vs non-responders** — replication is
-ample and is *not* the limiting factor here. (Exact per-group counts to be
-confirmed from the metadata at analysis time.)
+28 pre-treatment tumors → **15 responders** (Complete/Partial Response) vs
+**13 non-responders** (Progressive Disease). Ample replication; the original
+blocker was data type, not power.
 
 ## 4. Metadata clarity
 
-**Moderate.** Response status must be mapped from the clinical annotation onto
-the FPKM matrix columns; straightforward but requires care.
+**Moderate.** The GEO `characteristics_ch1.*` fields are **ragged** (the
+`anti-pd-1 response` field sits at different column positions across samples), so
+response was extracted by scanning all characteristics columns per sample (see
+[`scripts/prep_metadata.R`](scripts/prep_metadata.R)). RECIST categories were
+dichotomized: responder = CR/PR, non-responder = PD (no stable-disease cases).
+SRA experiment accessions (SRX) were used to join GEO samples to recount3.
 
 ## 5. Possible contrasts
 
@@ -68,20 +77,15 @@ the FPKM matrix columns; straightforward but requires care.
 
 ## 6. Recommended statistical design
 
-- **As deposited:** none valid for count-based DE — **FPKM must not enter
-  DESeq2/edgeR** (per-gene cross-sample comparisons on FPKM are statistically
-  unsound).
-- **Correct path:** obtain raw counts by reprocessing **SRA SRP070710** (or pull
-  precomputed counts from **recount3 / ARCHS4**), then DESeq2 with `~ response`.
-- A limma-trend analysis on `log2(FPKM+1)` is a weaker fallback and would be
-  clearly labelled as such, not presented as a count-based DESeq2 result.
+- **Method:** DESeq2 on recount3 raw counts, `~ response`
+  (ref = non_responder, contrast responder vs non_responder).
+- **Not valid:** DESeq2/edgeR on the deposited FPKM.
 
-## 7. Decision — CONDITIONAL
+## 7. Decision — INCLUDE (promoted)
 
-**Decision:** **conditional** — promote to *include* only after raw counts are
-obtained from SRA/recount3.
+**Decision:** **include**, promoted from **conditional**.
 
-**Reasons:** the deposited FPKM cannot support a valid DESeq2 analysis, but the
-underlying reads exist publicly, so the dataset is rescuable rather than a hard
-exclude. Documenting this — instead of silently running DESeq2 on FPKM — is the
-judgment the portfolio is meant to show.
+**Reasons:** the deposited FPKM cannot support a valid count model, but the reads
+are public; recount3 provides uniformly reprocessed raw counts, which we used.
+The dataset went from "not yet — wrong data type as deposited" to a valid
+analysis without ever running DESeq2 on FPKM.
