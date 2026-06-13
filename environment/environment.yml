@@ -30,6 +30,7 @@ dependencies:
   - bioconductor-apeglm          # LFC shrinkage
   - bioconductor-annotationdbi
   - bioconductor-clusterprofiler
-  - bioconductor-org.hs.eg.db    # human; add others as needed:
-  # - bioconductor-org.mm.eg.db  # mouse
+  - bioconductor-org.hs.eg.db    # human
+  - bioconductor-org.mm.eg.db    # mouse (GSE60450)
+  # - bioconductor-org.rn.eg.db  # rat (add as needed)
   # - bioconductor-org.rn.eg.db  # rat

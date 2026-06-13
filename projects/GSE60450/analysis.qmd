@@ -1,0 +1,237 @@
+---
+title: "Luminal vs basal mammary epithelium across development — GSE60450"
+subtitle: "GEO RNA-seq Portfolio · differential expression re-analysis"
+author: "jam-sudo"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-tools: true
+    theme: cosmo
+    embed-resources: true
+    fig-width: 7
+    fig-height: 5
+execute:
+  warning: true
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(here)
+source(here("scripts", "geo_helpers.R"))
+suppressPackageStartupMessages({
+  library(DESeq2)
+  library(data.table)
+  library(clusterProfiler)
+})
+
+ACC      <- "GSE60450"
+ORGDB    <- "org.Mm.eg.db"
+PROJ_DIR <- here("projects", ACC)
+DATA_DIR <- file.path(PROJ_DIR, "data")
+FIG_DIR  <- file.path(PROJ_DIR, "results", "figures")
+TAB_DIR  <- file.path(PROJ_DIR, "results", "tables")
+dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
+dir.create(TAB_DIR, recursive = TRUE, showWarnings = FALSE)
+
+COUNTS_GZ  <- file.path(DATA_DIR, "raw", "GSE60450_Lactation-GenewiseCounts.txt.gz")
+CLEAN_META <- file.path(DATA_DIR, "GSE60450_metadata_clean.csv")
+```
+
+## Biological question
+
+The mouse mammary gland is built from two epithelial lineages — **basal**
+(myoepithelial) and **luminal** — and it remodels dramatically across
+development (virgin → pregnancy → lactation). This dataset (Fu *et al.*, 2015)
+FACS-sorted basal and luminal cells at three developmental stages and profiled
+them by RNA-seq.
+
+> **Question:** Which genes distinguish the **luminal** from the **basal**
+> lineage, accounting for developmental stage?
+
+- **Accession:** [GSE60450](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE60450) · *Mus musculus* · Illumina HiSeq 2000 (GPL13112)
+- **Design:** 2 lineages (basal, luminal) × 3 stages (virgin, pregnant, lactating) × 2 mice = 12 samples.
+- Suitability report: [`SUITABILITY.md`](SUITABILITY.md) (decision: **include**).
+
+## 1. Load gene-wise counts (integer; no rounding needed)
+
+`GSE60450_Lactation-GenewiseCounts.txt.gz` is an Rsubread `featureCounts`
+matrix: `EntrezGeneID`, `Length`, then 12 sample columns. Values are already
+integers. Row key = Entrez Gene ID.
+
+```{r load-counts}
+raw <- data.table::fread(COUNTS_GZ)
+sample_cols <- setdiff(names(raw), c("EntrezGeneID", "Length"))
+stopifnot(length(sample_cols) == 12)
+
+counts <- as.matrix(raw[, ..sample_cols])
+rownames(counts) <- as.character(raw$EntrezGeneID)
+storage.mode(counts) <- "integer"
+
+# Count columns are long codes like "MCL1-DG_BC2CTUACXX_..."; reduce to the code.
+colnames(counts) <- sub("_.*$", "", colnames(counts))
+cat("Count matrix:", nrow(counts), "genes x", ncol(counts), "samples\n")
+cat("Sample codes:", paste(colnames(counts), collapse = ", "), "\n")
+```
+
+## 2. Cleaned metadata & design
+
+Group labels were taken from the GEO `source_name_ch1` / sample titles, and the
+count-column codes were mapped to samples via each GSM's **supplementary-file
+name** (`GSM..._MCL1-XX_...`) — an authoritative key, not a guess. Reference
+levels: `cell_type = basal`, `stage = virgin`.
+
+```{r metadata}
+meta <- read.csv(CLEAN_META, stringsAsFactors = FALSE)
+rownames(meta) <- meta$code
+meta <- meta[colnames(counts), ]                 # align to count columns by code
+meta$cell_type <- factor(meta$cell_type, levels = c("basal", "luminal"))
+meta$stage     <- factor(meta$stage, levels = c("virgin", "pregnant", "lactating"))
+meta$group     <- paste(meta$cell_type, meta$stage, sep = " / ")
+
+stopifnot(identical(colnames(counts), rownames(meta)))
+write_results_table(meta, file.path(TAB_DIR, paste0(ACC, "_metadata_clean.csv")))
+knitr::kable(meta[, c("geo_accession", "title", "cell_type", "stage", "replicate")],
+             caption = "Cleaned design table (codes mapped via GSM supplementary filenames)")
+```
+
+**Design formula:** `~ stage + cell_type` — adjusts for developmental stage and
+estimates the lineage (luminal vs basal) effect.
+**Primary contrast:** `cell_type` luminal vs basal (n = 6 vs 6, well powered).
+
+## 3. Differential expression (DESeq2)
+
+```{r deseq2}
+de <- run_deseq2(
+  counts   = counts,
+  coldata  = meta,
+  design   = ~ stage + cell_type,
+  contrast = c("cell_type", "luminal", "basal")
+)
+res_shrink <- lfcShrink(de$dds, coef = "cell_type_luminal_vs_basal", type = "apeglm")
+de$res_df$log2FoldChange_shrunk <- res_shrink[de$res_df$gene_id, "log2FoldChange"]
+
+de$res_df <- annotate_symbols(de$res_df, orgdb = ORGDB,
+                              keytype = "ENTREZID", id_col = "gene_id")
+write_results_table(de$res_df, file.path(TAB_DIR, paste0(ACC, "_DE_results.csv")))
+summary(de$res)
+
+# Lineage markers as a sanity check: Krt5/Krt14/Acta2 (basal) should be DOWN,
+# Krt8/Krt18/Esr1 (luminal) UP, in luminal-vs-basal.
+markers <- c("Krt5", "Krt14", "Acta2", "Krt8", "Krt18", "Esr1")
+knitr::kable(de$res_df[match(markers, de$res_df$symbol),
+                       c("symbol", "log2FoldChange", "padj")],
+             caption = "Canonical lineage markers (sanity check)")
+```
+
+## 4. Quality control
+
+```{r qc-basic}
+grp <- meta$group
+save_fig(plot_library_sizes(counts, grp),      file.path(FIG_DIR, "qc_library_sizes.png"))
+save_fig(plot_count_distribution(counts, grp), file.path(FIG_DIR, "qc_count_distribution.png"), height = 6)
+plot_library_sizes(counts, grp)
+```
+
+### PCA — colored by lineage, shaped by stage
+
+```{r qc-pca}
+vsd_mat <- SummarizedExperiment::assay(de$vsd)
+pc <- prcomp(t(vsd_mat))
+ve <- round(100 * pc$sdev^2 / sum(pc$sdev^2), 1)
+pca_df <- data.frame(PC1 = pc$x[, 1], PC2 = pc$x[, 2], meta)
+
+p_pca <- ggplot(pca_df, aes(PC1, PC2, color = cell_type, shape = stage)) +
+  geom_point(size = 4, alpha = 0.9) +
+  scale_color_manual(values = c(basal = "#1b9e77", luminal = "#d95f02")) +
+  labs(title = "PCA (variance-stabilized counts)",
+       x = paste0("PC1 (", ve[1], "%)"), y = paste0("PC2 (", ve[2], "%)"),
+       color = "Lineage", shape = "Stage") +
+  geo_theme()
+save_fig(p_pca, file.path(FIG_DIR, "qc_pca.png"))
+p_pca
+```
+
+### Sample-sample correlation
+
+```{r qc-corr}
+plot_sample_correlation(vsd_mat, group = meta$cell_type,
+                        file = file.path(FIG_DIR, "qc_sample_correlation.png"))
+plot_sample_correlation(vsd_mat, group = meta$cell_type)
+```
+
+## 5. DE figures
+
+```{r de-figs}
+save_fig(volcano_plot(de$res_df, title = "Luminal vs basal"),
+         file.path(FIG_DIR, "volcano.png"))
+save_fig(ma_plot(de$res_df, title = "MA plot — luminal vs basal"),
+         file.path(FIG_DIR, "ma_plot.png"))
+top_gene_heatmap(de$vsd, de$res_df, n = 30, group = meta$cell_type,
+                 file = file.path(FIG_DIR, "top_genes_heatmap.png"),
+                 id_col = "gene_id", label_col = "symbol")
+volcano_plot(de$res_df, title = "Luminal vs basal")
+```
+
+```{r de-table}
+knitr::kable(head(de$res_df[order(de$res_df$padj),
+                            c("symbol", "gene_id", "baseMean", "log2FoldChange", "padj")], 25),
+             digits = 3, caption = "Top 25 DE genes (luminal vs basal)")
+```
+
+## 6. Functional enrichment (GO BP)
+
+```{r enrichment}
+enr <- run_enrichment(de$res_df, orgdb = ORGDB, keytype = "ENTREZID",
+                      id_col = "gene_id", padj_thresh = 0.05, lfc_thresh = 1)
+if (!is.null(enr) && !is.null(enr$go_bp) && nrow(as.data.frame(enr$go_bp)) > 0) {
+  write_results_table(as.data.frame(enr$go_bp),
+                      file.path(TAB_DIR, paste0(ACC, "_GO_BP_enrichment.csv")))
+  save_fig(barplot(enr$go_bp, showCategory = 15) + ggtitle("GO BP enrichment"),
+           file.path(FIG_DIR, "go_bp_enrichment.png"), height = 7)
+  knitr::kable(head(as.data.frame(enr$go_bp)[, c("ID", "Description", "p.adjust", "Count")], 15),
+               caption = "Top GO biological-process terms")
+} else cat("No significant GO-BP enrichment returned.\n")
+```
+
+## 7. Interpretation
+
+*Grounded in the rendered results (18,418 genes tested; 7,347 significant at
+`padj < 0.05`, `|log2FC| > 1`, adjusted for developmental stage).*
+
+- **The lineage axis dominates — and the markers prove the labels are right.**
+  Canonical **basal/myoepithelial** markers are strongly higher in basal cells
+  (Krt5 log2FC ≈ −9.0, Acta2 ≈ −8.9, Krt14 ≈ −6.8) while **luminal** markers are
+  higher in luminal cells (Krt18 ≈ +3.9, Esr1 ≈ +2.5, Krt8 ≈ +2.0). This is a
+  clean biological positive control: the sorting, the metadata mapping, and the
+  DESeq2 contrast all line up with known mammary biology.
+- **Scale is expected, not alarming.** ~7,300 DE genes is large, but basal and
+  luminal are genuinely distinct cell types — a deep transcriptional divide, not
+  a subtle perturbation. (Contrast this with GSE157830's GOT1 knockdown, where a
+  single-gene perturbation moved ~900 genes.)
+- **Basal-high program:** GO biological process is led by **extracellular-matrix
+  organization, cell-substrate adhesion, and muscle contraction** — exactly the
+  contractile myoepithelial phenotype of basal cells.
+- **Luminal-high program:** top luminal genes include **Tph1** (serotonin
+  biosynthesis, a known luminal/lactation gene), **Calca**, and secretory
+  **Wfdc** family members — the secretory luminal identity.
+
+## 8. Limitations
+
+- **Only 2 biological replicates per group** (2 mice × 6 groups). The luminal-vs-
+  basal contrast pools to n = 6 per side and is well powered, but stage-specific
+  contrasts (n = 2) are low-powered; treat those as exploratory.
+- Additive design `~ stage + cell_type` assumes the lineage difference is
+  consistent across stages; a `stage:cell_type` interaction would test lineage-
+  specific developmental remodelling.
+- Gene identifiers are Entrez IDs from the submitter's count matrix; a few may be
+  retired/merged in current annotation.
+
+## Reproducibility
+
+```{r session}
+sessionInfo()
+```

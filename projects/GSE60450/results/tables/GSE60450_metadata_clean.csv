@@ -1,0 +1,13 @@
+code,geo_accession,title,cell_type,stage,replicate,group
+MCL1-DG,GSM1480297,Basal virgin #1,basal,virgin,1,basal / virgin
+MCL1-DH,GSM1480298,Basal virgin #2,basal,virgin,2,basal / virgin
+MCL1-DI,GSM1480299,Basal 18.5 dP #1,basal,pregnant,1,basal / pregnant
+MCL1-DJ,GSM1480300,Basal 18.5 dP #2,basal,pregnant,2,basal / pregnant
+MCL1-DK,GSM1480301,Basal 2 dL #1,basal,lactating,1,basal / lactating
+MCL1-DL,GSM1480302,Basal 2 dL #2,basal,lactating,2,basal / lactating
+MCL1-LA,GSM1480291,Luminal virgin #1,luminal,virgin,1,luminal / virgin
+MCL1-LB,GSM1480292,Luminal virgin #2,luminal,virgin,2,luminal / virgin
+MCL1-LC,GSM1480293,Luminal 18.5 dP #1,luminal,pregnant,1,luminal / pregnant
+MCL1-LD,GSM1480294,Luminal 18.5 dP #2,luminal,pregnant,2,luminal / pregnant
+MCL1-LE,GSM1480295,Luminal 2 dL #1,luminal,lactating,1,luminal / lactating
+MCL1-LF,GSM1480296,Luminal 2 dL #2,luminal,lactating,2,luminal / lactating

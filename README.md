@@ -102,8 +102,8 @@ See **[`docs/TRIAGE.md`](docs/TRIAGE.md)** for the live table. Current datasets:
 
 | Dataset | Organism | Question | Decision | Why |
 |---------|----------|----------|----------|-----|
-| [GSE157830](projects/GSE157830/) | *H. sapiens* | GOT1 knockdown vs control in PDAC | **include** | gene-level raw counts; balanced 2×2 |
-| [GSE60450](projects/GSE60450/) | *M. musculus* | luminal vs basal mammary cells across stages | **include** | raw count matrix; factorial design |
+| [GSE157830](projects/GSE157830/) | *H. sapiens* | GOT1 knockdown vs control in PDAC | **include** ✓ rendered | gene-level raw counts; 933 DEGs, GOT1 top hit |
+| [GSE60450](projects/GSE60450/) | *M. musculus* | luminal vs basal mammary cells across stages | **include** ✓ rendered | raw count matrix; 7,347 DEGs, markers validate labels |
 | [GSE78220](projects/GSE78220/) | *H. sapiens* | anti-PD-1 responders vs non-responders | **conditional** | RNA-seq but **FPKM-only**; needs SRA/recount3 counts |
 | [GSE2034](projects/GSE2034/) | *H. sapiens* | breast-cancer metastasis vs relapse-free | **exclude** | **microarray**, not RNA-seq — wrong assay for DESeq2 |
 
