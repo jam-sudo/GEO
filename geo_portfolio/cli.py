@@ -16,11 +16,9 @@ from .data import DataDownloadError, download_counts, raw_count_urls
 from .fetch import GeoFetchError, fetch_soft, validate_accession
 from .parse import parse_soft
 from .report import build_record, to_json, to_markdown
-from .runner import RunError, run_analysis
+from .runner import TEMPLATE_MARKER, RunError, run_analysis
 from .scaffold import ScaffoldError, scaffold_project, write_triage_into_project
 from .suitability import assess, orgdb_for
-
-TEMPLATE_MARKER = "Set the count-loading code for this dataset."
 
 
 def _is_curated_qmd(project_dir: Path) -> bool:

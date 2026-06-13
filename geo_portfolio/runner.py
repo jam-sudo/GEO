@@ -20,6 +20,11 @@ class RunError(RuntimeError):
     pass
 
 
+# Present in the project template's count-loading chunk; its absence means the
+# analysis.qmd has been customized for the dataset.
+TEMPLATE_MARKER = "Set the count-loading code for this dataset."
+
+
 def read_decision(project_dir: Path) -> Tuple[Optional[str], Optional[str]]:
     """Return (decision, suitability_class) from the project's SUITABILITY.md, or (None, None)."""
     sf = Path(project_dir) / "SUITABILITY.md"
@@ -65,6 +70,15 @@ def run_analysis(
         raise RunError(f"Project folder not found: {project_dir}. Scaffold it first (geo scaffold).")
     if not qmd.exists():
         raise RunError(f"No analysis.qmd in {project_dir}. Scaffold the project first.")
+
+    # Guard: refuse to render the un-customized template (it deliberately stops at
+    # a placeholder and would fail confusingly). geo pipeline checks this too.
+    if not force and TEMPLATE_MARKER in qmd.read_text(encoding="utf-8"):
+        raise RunError(
+            f"{qmd} is still the template — the count-loading code, design, and "
+            "contrast haven't been filled in for this dataset. Curate analysis.qmd "
+            "first, then run. (Use --force only if you really mean to render the template.)"
+        )
 
     decision, cls = read_decision(project_dir)
     if decision is None:

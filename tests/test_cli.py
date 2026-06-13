@@ -92,6 +92,18 @@ def test_run_refuses_without_triage(tmp_path, monkeypatch):
     assert "Cannot run" in res.output or "decision" in res.output.lower()
 
 
+def test_run_refuses_uncurated_template_even_when_include(tmp_path, monkeypatch):
+    repo_root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(repo_root)
+    out = tmp_path / "GSE157830"
+    runner.invoke(cli.app, ["scaffold", "GSE157830", "--out", str(out)])
+    # mark the project as include, but leave analysis.qmd as the template
+    (out / "SUITABILITY.md").write_text("---\ndecision: include\nsuitability_class: suitable\n---\n")
+    res = runner.invoke(cli.app, ["run", "GSE157830", "--project", str(out), "--dry-run"])
+    assert res.exit_code == 1
+    assert "template" in res.output.lower()
+
+
 @pytest.fixture
 def no_network_download(monkeypatch):
     """Stub the count downloader so pipeline/data tests stay offline."""
