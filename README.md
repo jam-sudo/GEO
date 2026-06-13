@@ -78,7 +78,7 @@ One mamba environment pins the whole toolchain; every report embeds
 
 | Dataset | Organism | Question | Data type | Status |
 |---------|----------|----------|-----------|--------|
-| _none yet_ | | | | scaffolding |
+| [GSE157830](projects/GSE157830/) | *H. sapiens* | GOT1 knockdown vs control in PDAC (Tu8902, MiaPaCa2) | Gene-level RSEM raw counts | Suitability ✓, analysis coded; renders once env is built |
 
 <!-- Add a row per dataset as projects are completed. -->
 

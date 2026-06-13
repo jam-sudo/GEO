@@ -1,0 +1,288 @@
+---
+title: "GOT1 knockdown vs control in pancreatic cancer — GSE157830"
+subtitle: "GEO RNA-seq Portfolio · differential expression re-analysis"
+author: "jam-sudo"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-tools: true
+    theme: cosmo
+    embed-resources: true
+    fig-width: 7
+    fig-height: 5
+execute:
+  warning: true
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(here)
+source(here("scripts", "geo_helpers.R"))
+suppressPackageStartupMessages({
+  library(DESeq2)
+  library(data.table)
+  library(clusterProfiler)
+})
+
+ACC      <- "GSE157830"
+PROJ_DIR <- here("projects", ACC)
+DATA_DIR <- file.path(PROJ_DIR, "data")
+FIG_DIR  <- file.path(PROJ_DIR, "results", "figures")
+TAB_DIR  <- file.path(PROJ_DIR, "results", "tables")
+dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
+dir.create(TAB_DIR, recursive = TRUE, showWarnings = FALSE)
+
+COUNTS_GZ  <- file.path(DATA_DIR, "raw", "GSE157830_genes.counts.txt.gz")
+CLEAN_META <- file.path(DATA_DIR, "GSE157830_metadata_clean.csv")
+```
+
+## Biological question
+
+**GOT1** (glutamic-oxaloacetic transaminase 1) is a cytosolic aspartate
+aminotransferase that pancreatic ductal adenocarcinoma (PDAC) cells rely on to
+maintain redox balance. This dataset (Kremer *et al.*, *"Labile Iron Release
+Primes Pancreatic Cancer for Ferroptosis"*) uses a **doxycycline-inducible
+shRNA** to knock down GOT1 in two PDAC cell lines and profiles the
+transcriptome by RNA-seq.
+
+> **Question:** Which genes and pathways change when GOT1 is knocked down in PDAC
+> cells, consistently across two cell lines? We compare **GOT1 knockdown (+Dox)
+> vs control (−Dox)** while statistically accounting for the cell-line baseline.
+
+- **Accession:** [GSE157830](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE157830) · *Homo sapiens* · Illumina NovaSeq 6000 (GPL24676)
+- **Design:** 2 cell lines (Tu8902, MiaPaCa2) × 2 treatments (control, GOT1 knockdown) × 3 replicates = 12 samples.
+- A full pre-analysis suitability review is in [`notes/suitability.md`](notes/suitability.md).
+
+## 1. Provenance: save verbatim GEO metadata
+
+The cleaned metadata used for modelling is derived (and documented) in the
+suitability note. Here we additionally pull the **verbatim** GEO sample metadata
+for provenance. Network-dependent; wrapped so a failure does not break the report.
+
+```{r geo-metadata}
+meta_raw_path <- file.path(DATA_DIR, paste0(ACC, "_sample_metadata.csv"))
+if (!file.exists(meta_raw_path)) {
+  try({
+    geo <- fetch_geo(ACC, dest_dir = DATA_DIR, get_supp = FALSE)
+  }, silent = TRUE)
+}
+if (file.exists(meta_raw_path)) {
+  cat("Verbatim GEO metadata saved at:", meta_raw_path, "\n")
+} else {
+  cat("GEO metadata fetch skipped/unavailable; cleaned metadata is used below.\n")
+}
+```
+
+## 2. Load gene-level RSEM counts (rounded to integers)
+
+The supplementary file `GSE157830_genes.counts.txt.gz` holds **RSEM expected
+counts** with 8 annotation columns + 12 sample columns. RSEM counts are
+fractional, so they are **rounded** before DESeq2 (the FPKM/TPM files are *not*
+used). `ensembl_gene_id` is the unique row key; `gene_name` is kept as a label.
+
+```{r load-counts}
+raw <- data.table::fread(COUNTS_GZ)
+
+anno_cols <- c("gene_name", "ensembl_gene_id", "gene_type", "entrez",
+               "transcript_name", "ensembl_transcript", "transcript_type",
+               "gene_description")
+sample_cols <- setdiff(names(raw), anno_cols)
+stopifnot(length(sample_cols) == 12)
+
+gene_anno <- raw[, .(ensembl_gene_id, gene_name, entrez, gene_type)]
+gene_anno[, gene_id := make.unique(as.character(ensembl_gene_id))]
+
+counts <- as.matrix(raw[, ..sample_cols])
+rownames(counts) <- gene_anno$gene_id
+counts <- round(counts)                       # RSEM expected counts -> integers
+storage.mode(counts) <- "integer"
+
+cat("Count matrix:", nrow(counts), "genes x", ncol(counts), "samples\n")
+cat("Fractional values were rounded (RSEM expected counts).\n")
+```
+
+## 3. Cleaned metadata & experimental design
+
+Groups come from the GEO `genotype/variation` characteristics field, not the
+free-text title (see suitability note, assumption A1). Reference levels:
+`treatment = control`, `cell_line = Tu8902`.
+
+```{r metadata}
+meta <- read.csv(CLEAN_META, stringsAsFactors = FALSE)
+rownames(meta) <- meta$sample_name
+meta <- meta[sample_cols, ]                    # align to count columns
+meta$cell_line <- factor(meta$cell_line, levels = c("Tu8902", "MiaPaCa2"))
+meta$treatment <- factor(meta$treatment, levels = c("control", "GOT1_knockdown"))
+meta$group     <- paste(meta$cell_line, meta$treatment, sep = " / ")
+
+stopifnot(identical(colnames(counts), rownames(meta)))
+write_results_table(meta, file.path(TAB_DIR, paste0(ACC, "_metadata_clean.csv")))
+knitr::kable(meta[, c("geo_accession", "cell_line", "treatment", "dox", "replicate")],
+             caption = "Cleaned sample metadata (design table)")
+```
+
+**Design formula:** `~ cell_line + treatment` — adjusts for the cell-line
+baseline and estimates the shared GOT1-knockdown effect.
+**Primary contrast:** `treatment` GOT1_knockdown vs control.
+
+## 4. Differential expression (DESeq2)
+
+```{r deseq2}
+de <- run_deseq2(
+  counts   = counts,
+  coldata  = meta,
+  design   = ~ cell_line + treatment,
+  contrast = c("treatment", "GOT1_knockdown", "control")
+)
+
+# Shrunken LFCs for ranking/plots (apeglm).
+res_shrink <- lfcShrink(de$dds, coef = "treatment_GOT1_knockdown_vs_control",
+                        type = "apeglm")
+de$res_df$log2FoldChange_shrunk <- res_shrink[de$res_df$gene_id, "log2FoldChange"]
+
+# Attach in-file symbol + Entrez (more reliable than re-mapping).
+anno_df <- as.data.frame(gene_anno)[, c("gene_id", "gene_name", "entrez")]
+de$res_df <- dplyr::left_join(de$res_df, anno_df, by = "gene_id")
+de$res_df <- dplyr::rename(de$res_df, symbol = gene_name)
+
+write_results_table(de$res_df, file.path(TAB_DIR, paste0(ACC, "_DE_results.csv")))
+summary(de$res)
+
+# GOT1 itself — the knockdown target (positive control for the experiment).
+knitr::kable(
+  de$res_df[de$res_df$symbol == "GOT1" & !is.na(de$res_df$symbol),
+            c("symbol", "baseMean", "log2FoldChange", "padj")],
+  caption = "GOT1 (knockdown target) — expected strong down-regulation")
+```
+
+## 5. Quality control
+
+```{r qc-basic}
+grp <- meta$group
+save_fig(plot_library_sizes(counts, grp),      file.path(FIG_DIR, "qc_library_sizes.png"))
+save_fig(plot_count_distribution(counts, grp), file.path(FIG_DIR, "qc_count_distribution.png"),
+         height = 6)
+plot_library_sizes(counts, grp)
+```
+
+### PCA — colored by treatment, shaped by cell line
+
+```{r qc-pca}
+vsd_mat <- SummarizedExperiment::assay(de$vsd)
+pc <- prcomp(t(vsd_mat))
+ve <- round(100 * pc$sdev^2 / sum(pc$sdev^2), 1)
+pca_df <- data.frame(PC1 = pc$x[, 1], PC2 = pc$x[, 2], meta)
+
+p_pca <- ggplot(pca_df, aes(PC1, PC2, color = treatment, shape = cell_line)) +
+  geom_point(size = 4, alpha = 0.9) +
+  ggrepel::geom_text_repel(aes(label = replicate), size = 3, show.legend = FALSE) +
+  scale_color_manual(values = c(control = "#1b9e77", GOT1_knockdown = "#d95f02")) +
+  labs(title = "PCA (variance-stabilized counts)",
+       x = paste0("PC1 (", ve[1], "%)"), y = paste0("PC2 (", ve[2], "%)"),
+       color = "Treatment", shape = "Cell line") +
+  geo_theme()
+save_fig(p_pca, file.path(FIG_DIR, "qc_pca.png"))
+p_pca
+```
+
+### Sample-sample correlation heatmap
+
+```{r qc-corr}
+plot_sample_correlation(vsd_mat, group = meta$treatment,
+                        file = file.path(FIG_DIR, "qc_sample_correlation.png"))
+plot_sample_correlation(vsd_mat, group = meta$treatment)
+```
+
+## 6. Differential-expression figures
+
+```{r de-volcano}
+save_fig(volcano_plot(de$res_df, title = "GOT1 knockdown vs control"),
+         file.path(FIG_DIR, "volcano.png"))
+volcano_plot(de$res_df, title = "GOT1 knockdown vs control")
+```
+
+```{r de-ma}
+save_fig(ma_plot(de$res_df, title = "MA plot — GOT1 knockdown vs control"),
+         file.path(FIG_DIR, "ma_plot.png"))
+ma_plot(de$res_df, title = "MA plot — GOT1 knockdown vs control")
+```
+
+```{r de-heatmap}
+top_gene_heatmap(de$vsd, de$res_df, n = 30, group = meta$treatment,
+                 file = file.path(FIG_DIR, "top_genes_heatmap.png"),
+                 id_col = "gene_id", label_col = "symbol")
+```
+
+```{r de-table}
+top_tbl <- head(de$res_df[order(de$res_df$padj),
+                          c("symbol", "gene_id", "baseMean",
+                            "log2FoldChange", "pvalue", "padj")], 25)
+knitr::kable(top_tbl, digits = 3, caption = "Top 25 differentially expressed genes")
+```
+
+## 7. Functional enrichment (GO biological process)
+
+Significant genes (`padj < 0.05`, `|log2FC| > 1`) are tested for GO-BP
+over-representation using the in-file **Entrez** IDs via clusterProfiler.
+
+```{r enrichment}
+sig <- subset(de$res_df, !is.na(padj) & padj < 0.05 &
+                         abs(log2FoldChange) > 1 & !is.na(entrez))
+cat("Significant genes for enrichment:", nrow(sig), "\n")
+
+ego <- tryCatch(
+  clusterProfiler::enrichGO(
+    gene = unique(as.character(sig$entrez)),
+    OrgDb = "org.Hs.eg.db", keyType = "ENTREZID",
+    ont = "BP", pvalueCutoff = 0.05, qvalueCutoff = 0.1, readable = TRUE),
+  error = function(e) { warning(conditionMessage(e)); NULL })
+
+if (!is.null(ego) && nrow(as.data.frame(ego)) > 0) {
+  write_results_table(as.data.frame(ego),
+                      file.path(TAB_DIR, paste0(ACC, "_GO_BP_enrichment.csv")))
+  save_fig(barplot(ego, showCategory = 15) + ggtitle("GO BP enrichment"),
+           file.path(FIG_DIR, "go_bp_enrichment.png"), height = 7)
+  knitr::kable(head(as.data.frame(ego)[, c("ID", "Description", "p.adjust", "Count")], 15),
+               caption = "Top GO biological-process terms")
+} else {
+  cat("No significant GO-BP enrichment returned.\n")
+}
+```
+
+## 8. Interpretation
+
+<!-- FILL after first render, grounded in the actual results tables/figures: -->
+
+- **Positive control:** GOT1 should be strongly down-regulated in the knockdown
+  arm (raw counts drop ~20–30×), confirming the perturbation worked.
+- **Shared response:** genes consistently changed across both Tu8902 and
+  MiaPaCa2 reflect the cell-line-independent consequence of losing GOT1.
+- *Summarize the top up/down genes and the leading GO terms here, and relate
+  them to GOT1's role in aspartate/redox metabolism and the paper's ferroptosis
+  theme (iron handling, oxidative stress).*
+
+## 9. Limitations
+
+- **Control = uninduced (−Dox), not a non-targeting shRNA +Dox arm.** A
+  doxycycline-intrinsic transcriptional effect cannot be fully separated from
+  the GOT1-knockdown effect (suitability note A5).
+- **RSEM expected counts were rounded** to satisfy DESeq2's integer requirement;
+  importing per-transcript estimates via `tximport` would propagate uncertainty
+  more rigorously.
+- **Additive model only** (`~ cell_line + treatment`): it estimates a *shared*
+  knockdown effect and does not test whether the response differs between cell
+  lines (that would need `~ cell_line * treatment`).
+- **Two cell lines, n = 3 each** — adequate for DE but a limited sampling of PDAC
+  heterogeneity; findings are about these models, not PDAC in general.
+- Annotation uses the submitter-provided gene/Entrez IDs; a small number of
+  duplicated symbols/Ensembl IDs were de-duplicated (`make.unique`).
+
+## Reproducibility
+
+```{r session}
+sessionInfo()
+```

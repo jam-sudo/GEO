@@ -1,0 +1,13 @@
+sample_name,geo_accession,cell_line,treatment,dox,replicate
+Tu8902_shGOT1_mnsdox_1,GSM4775595,Tu8902,control,minus,1
+Tu8902_shGOT1_mnsdox_2,GSM4775596,Tu8902,control,minus,2
+Tu8902_shGOT1_mnsdox_3,GSM4775597,Tu8902,control,minus,3
+Tu8902_shGOT1_plsdox_1,GSM4775598,Tu8902,GOT1_knockdown,plus,1
+Tu8902_shGOT1_plsdox_2,GSM4775599,Tu8902,GOT1_knockdown,plus,2
+Tu8902_shGOT1_plsdox_3,GSM4775600,Tu8902,GOT1_knockdown,plus,3
+Mia_shGOT1_mnsdox_1,GSM4775601,MiaPaCa2,control,minus,1
+Mia_shGOT1_mnsdox_2,GSM4775602,MiaPaCa2,control,minus,2
+Mia_shGOT1_mnsdox_3,GSM4775603,MiaPaCa2,control,minus,3
+Mia_shGOT1_plsdox_1,GSM4775604,MiaPaCa2,GOT1_knockdown,plus,1
+Mia_shGOT1_plsdox_2,GSM4775605,MiaPaCa2,GOT1_knockdown,plus,2
+Mia_shGOT1_plsdox_3,GSM4775606,MiaPaCa2,GOT1_knockdown,plus,3
