@@ -67,16 +67,29 @@ Rendering produces these portfolio artifacts:
   log2FC, p, padj), `GSE157830_GO_BP_enrichment.csv`,
   `GSE157830_metadata_clean.csv`.
 
-> Status: analysis code + suitability review complete and verified against the
-> real count file (GOT1 positive-control confirmed). Figures/tables are generated
-> on render once the `geo-rnaseq` environment is built. Interpretation below is
-> filled in from the rendered results.
+> Status: **rendered end-to-end** in the `geo-rnaseq` environment. Figures and
+> tables below are real outputs; the rendered report is
+> [`analysis.html`](analysis.html). GOT1 positive control confirmed (top hit).
 
 ## Interpretation
 
-*To be completed from the rendered results — top up/down genes, leading GO
-terms, and how they relate to GOT1's role in aspartate/redox metabolism and the
-study's ferroptosis theme.*
+**Headline:** GOT1 knockdown produces a robust, reproducible transcriptional
+response shared by both PDAC cell lines — **933 genes** change (padj < 0.05,
+|log2FC| > 1, cell-line-adjusted) out of 21,339 tested.
+
+- **Knockdown confirmed:** GOT1 is the *single most significant gene*
+  (log2FC ≈ −4.7, ~26× down, padj ≈ 0) — a clean positive control.
+- **Down with GOT1:** DCLK1 (PDAC progenitor/stemness marker), KLF12, INHBE.
+- **Up on knockdown:** transporters METTL7A, SLC5A5 (NIS), SLC9A4, and the
+  immune-checkpoint ligand VTCN1 (B7-H4) — consistent with metabolic/transport
+  adaptation to redox stress.
+- **Pathways:** GO-BP enrichment (43 terms) is real but diffuse (immune/T-cell
+  differentiation, cell adhesion, eicosanoid secretion). Honestly, generic GO-BP
+  does **not** by itself recover the paper's ferroptosis/iron story — that needs
+  targeted ferroptosis/iron gene-set analysis (see Limitations).
+
+Full numbers: [`results/tables/GSE157830_DE_results.csv`](results/tables/GSE157830_DE_results.csv).
+Figures: [`results/figures/`](results/figures/).
 
 ## Limitations
 

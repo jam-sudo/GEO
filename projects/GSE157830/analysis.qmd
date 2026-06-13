@@ -255,15 +255,32 @@ if (!is.null(ego) && nrow(as.data.frame(ego)) > 0) {
 
 ## 8. Interpretation
 
-<!-- FILL after first render, grounded in the actual results tables/figures: -->
+*Grounded in the rendered results (21,339 genes tested; 933 significant at
+`padj < 0.05` and `|log2FC| > 1`, adjusted for cell line).*
 
-- **Positive control:** GOT1 should be strongly down-regulated in the knockdown
-  arm (raw counts drop ~20–30×), confirming the perturbation worked.
-- **Shared response:** genes consistently changed across both Tu8902 and
-  MiaPaCa2 reflect the cell-line-independent consequence of losing GOT1.
-- *Summarize the top up/down genes and the leading GO terms here, and relate
-  them to GOT1's role in aspartate/redox metabolism and the paper's ferroptosis
-  theme (iron handling, oxidative stress).*
+- **The perturbation worked — positive control confirmed.** GOT1 is the single
+  most significant gene in the entire analysis (log2FC ≈ **−4.7**, ~26-fold
+  down, `padj ≈ 0`), exactly as expected for an effective shRNA knockdown and
+  consistent with the ~20–30× raw-count drop seen during triage.
+- **A robust, cell-line-shared response.** Because the design adjusts for the
+  (dominant) cell-line axis, the 933 differentially expressed genes represent a
+  GOT1-dependent program common to both Tu8902 and MiaPaCa2 rather than a
+  one-line artifact.
+- **Down with GOT1:** alongside GOT1, the strongest losses include **DCLK1** (a
+  pancreatic tumor progenitor/stemness marker), **KLF12**, and **INHBE** —
+  consistent with disruption of a pro-tumorigenic metabolic program.
+- **Up on knockdown:** several solute carriers / transporters (**METTL7A**,
+  **SLC5A5/NIS**, **SLC9A4**) and the immune-modulatory **VTCN1 (B7-H4)** rise,
+  suggesting transport and metabolic adaptation to the redox stress of losing
+  GOT1's aspartate–malate shuttle activity.
+- **Pathway signal is real but diffuse.** GO biological-process
+  over-representation returns 43 terms led by T-cell differentiation / immune
+  response, cell adhesion, and eicosanoid secretion. Notably, generic GO-BP ORA
+  does **not** by itself reconstruct the study's ferroptosis/iron narrative —
+  that signal lives in specific redox/iron genes, not broad GO-BP categories.
+  Targeted gene-set analysis (ferroptosis, iron homeostasis, GSEA on the ranked
+  list) would be the appropriate follow-up and is noted as a limitation, not
+  overclaimed here.
 
 ## 9. Limitations
 
@@ -278,6 +295,9 @@ if (!is.null(ego) && nrow(as.data.frame(ego)) > 0) {
   lines (that would need `~ cell_line * treatment`).
 - **Two cell lines, n = 3 each** — adequate for DE but a limited sampling of PDAC
   heterogeneity; findings are about these models, not PDAC in general.
+- **GO-BP over-representation is a blunt instrument here** — it does not recover
+  the ferroptosis/iron theme; ranked-list GSEA against curated ferroptosis/iron
+  gene sets would test that hypothesis directly.
 - Annotation uses the submitter-provided gene/Entrez IDs; a small number of
   duplicated symbols/Ensembl IDs were de-duplicated (`make.unique`).
 

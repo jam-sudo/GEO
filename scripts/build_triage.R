@@ -45,7 +45,9 @@ rows <- lapply(files, function(f) {
     stringsAsFactors = FALSE)
 })
 tab <- do.call(rbind, Filter(Negate(is.null), rows))
-tab <- tab[order(tab$decision, tab$accession), ]
+# Order decisions meaningfully (include first), then by accession.
+dec_rank <- c(include = 1, conditional = 2, exclude = 3)
+tab <- tab[order(dec_rank[tab$decision], tab$accession), ]
 
 dir.create("docs", showWarnings = FALSE)
 write.csv(tab, "docs/triage.csv", row.names = FALSE)
