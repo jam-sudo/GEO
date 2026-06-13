@@ -1,0 +1,85 @@
+{
+  "accession": "GSE334534",
+  "title": "Transcriptomic determinants of humoral immunity for heterogeneously antigenic PL45 cells",
+  "organism": "Homo sapiens",
+  "organisms": [
+    "Homo sapiens"
+  ],
+  "assay_type": "bulk RNA-seq",
+  "platform": "GPL34284",
+  "series_type": "Expression profiling by high throughput sequencing",
+  "n_samples": 12,
+  "processed_files": [
+    {
+      "name": "GSE334534_genes_expected_counts_all_samples.txt.gz",
+      "type": "raw_counts"
+    }
+  ],
+  "raw_counts_available": "yes",
+  "normalized_values_present": "no",
+  "groups": [
+    {
+      "name": "IgG_Negative",
+      "n_replicates": 6
+    },
+    {
+      "name": "IgG_Positive",
+      "n_replicates": 6
+    }
+  ],
+  "min_replicates_per_group": 6,
+  "metadata_clarity": "clear",
+  "possible_contrasts": [
+    "IgG_Negative vs IgG_Positive"
+  ],
+  "recommended_design": "~ batch + treatment",
+  "de_method": "DESeq2",
+  "decision": "include",
+  "organism_db": "org.Hs.eg.db",
+  "suitability_class": "suitable",
+  "suitability_score": 100,
+  "score_reasons": [
+    {
+      "delta": 10,
+      "text": "Bulk RNA-seq assay."
+    },
+    {
+      "delta": 30,
+      "text": "Raw count file detected in supplementary files."
+    },
+    {
+      "delta": 10,
+      "text": "Grouping factor 'treatment' has >=3 replicates per level."
+    },
+    {
+      "delta": 10,
+      "text": "Groups encoded in characteristics field ('treatment')."
+    }
+  ],
+  "warnings": [],
+  "factors": [
+    {
+      "factor": "treatment",
+      "source_key": "treatment",
+      "levels": {
+        "IgG_Negative": 6,
+        "IgG_Positive": 6
+      },
+      "ambiguous": false,
+      "note": ""
+    },
+    {
+      "factor": "batch",
+      "source_key": "batch",
+      "levels": {
+        "1": 4,
+        "2": 4,
+        "3": 4
+      },
+      "ambiguous": false,
+      "note": ""
+    }
+  ],
+  "next_action": "Scaffold and run the analysis (geo init-project … then geo run …).",
+  "generated_by": "geo_portfolio CLI"
+}

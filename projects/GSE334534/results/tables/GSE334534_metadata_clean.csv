@@ -1,0 +1,13 @@
+sample,geo_accession,clone,treatment,batch,replicate,group
+A1_IgG_Negative_Rep1,GSM9790462,A1,IgG_Negative,1,1,A1 / IgG_Negative
+A1_IgG_Negative_ERS_Rep2,GSM9790463,A1,IgG_Negative,1,2,A1 / IgG_Negative
+A1_IgG_Negative_Rep3,GSM9790464,A1,IgG_Negative,2,3,A1 / IgG_Negative
+A1_IgG_Positive_Rep1,GSM9790465,A1,IgG_Positive,2,1,A1 / IgG_Positive
+A1_IgG_Positive_Rep2,GSM9790466,A1,IgG_Positive,3,2,A1 / IgG_Positive
+A1_IgG_Positive_Rep3,GSM9790467,A1,IgG_Positive,3,3,A1 / IgG_Positive
+A14_IgG_Negative_Rep1,GSM9790468,A14,IgG_Negative,1,1,A14 / IgG_Negative
+A14_IgG_Negative_Rep2,GSM9790469,A14,IgG_Negative,1,2,A14 / IgG_Negative
+A14_IgG_Negative_Rep3,GSM9790470,A14,IgG_Negative,2,3,A14 / IgG_Negative
+A14_IgG_Positive_Rep1,GSM9790471,A14,IgG_Positive,2,1,A14 / IgG_Positive
+A14_IgG_Positive_Rep2,GSM9790472,A14,IgG_Positive,3,2,A14 / IgG_Positive
+A14_IgG_Positive_Rep3,GSM9790473,A14,IgG_Positive,3,3,A14 / IgG_Positive

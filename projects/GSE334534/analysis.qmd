@@ -1,0 +1,221 @@
+---
+title: "IgG-positive vs IgG-negative pancreatic cancer cells — GSE334534"
+subtitle: "GEO RNA-seq Portfolio · differential expression re-analysis"
+author: "jam-sudo"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-tools: true
+    theme: cosmo
+    embed-resources: true
+    fig-width: 7
+    fig-height: 5
+execute:
+  warning: true
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(here)
+source(here("scripts", "geo_helpers.R"))
+suppressPackageStartupMessages({
+  library(DESeq2)
+  library(data.table)
+  library(clusterProfiler)
+})
+
+ACC      <- "GSE334534"
+ORGDB    <- "org.Hs.eg.db"
+PROJ_DIR <- here("projects", ACC)
+DATA_DIR <- file.path(PROJ_DIR, "data")
+FIG_DIR  <- file.path(PROJ_DIR, "results", "figures")
+TAB_DIR  <- file.path(PROJ_DIR, "results", "tables")
+dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
+dir.create(TAB_DIR, recursive = TRUE, showWarnings = FALSE)
+
+COUNTS_GZ  <- file.path(DATA_DIR, "raw", "GSE334534_genes_expected_counts_all_samples.txt.gz")
+CLEAN_META <- file.path(DATA_DIR, "GSE334534_metadata_clean.csv")
+```
+
+## Biological question
+
+This dataset profiles **PL45 pancreatic-cancer cells** that were sorted by
+surface **IgG binding** (IgG-positive vs IgG-negative), across two single-cell
+clones (A1, A14), to find transcriptional correlates of humoral-immunity
+phenotypes.
+
+> **Question:** Which genes differ between **IgG-positive** and **IgG-negative**
+> PL45 cells, consistently across the two clones?
+
+- **Accession:** [GSE334534](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE334534) · *Homo sapiens* · bulk RNA-seq.
+- **Design:** 2 clones (A1, A14) × 2 sorts (IgG_Negative, IgG_Positive) × 3 replicates = 12 samples.
+
+> **Note (why this isn't the template):** GSE334534 has **no GEO series-matrix
+> file** (`matrix/` returns 404), so the generic `getGEO()`-based acquisition in
+> the template fails. This curated report instead reads the **local count file**
+> and a cleaned metadata table built from the GEO `characteristics` fields.
+
+## 1. Load RSEM expected counts (rounded to integers)
+
+`GSE334534_genes_expected_counts_all_samples.txt.gz` holds **RSEM expected
+counts** (`gene_id` = HGNC symbol + 12 sample columns). RSEM counts are
+fractional, so they are **rounded** before DESeq2.
+
+```{r load-counts}
+raw <- data.table::fread(COUNTS_GZ)
+sample_cols <- setdiff(names(raw), "gene_id")
+gene_ids <- make.unique(as.character(raw$gene_id))
+counts <- as.matrix(raw[, ..sample_cols])
+rownames(counts) <- gene_ids
+colnames(counts) <- sub("^expected_count_", "", colnames(counts))  # strip prefix
+counts <- round(counts)                                            # RSEM -> integers
+storage.mode(counts) <- "integer"
+cat("Count matrix:", nrow(counts), "genes x", ncol(counts), "samples\n")
+```
+
+## 2. Cleaned metadata & design
+
+Group labels come from the GEO `characteristics` fields (`treatment`, `batch`),
+saved verbatim per sample; the **clone** (A1/A14) is parsed from the sample name
+(it is *not* a separate characteristics field — `cell line` is constant `PL45`).
+
+```{r metadata}
+meta <- read.csv(CLEAN_META, stringsAsFactors = FALSE)
+rownames(meta) <- meta$sample
+meta <- meta[colnames(counts), ]                       # align to count columns
+meta$clone     <- factor(meta$clone, levels = c("A1", "A14"))
+meta$treatment <- factor(meta$treatment, levels = c("IgG_Negative", "IgG_Positive"))
+meta$batch     <- factor(meta$batch)
+meta$group     <- paste(meta$clone, meta$treatment, sep = " / ")
+stopifnot(identical(colnames(counts), rownames(meta)))
+write_results_table(meta, file.path(TAB_DIR, paste0(ACC, "_metadata_clean.csv")))
+knitr::kable(meta[, c("geo_accession", "clone", "treatment", "batch", "replicate")],
+             caption = "Cleaned design table")
+```
+
+**Design:** `~ clone + treatment`. The clone factor is balanced with treatment
+(each clone has 3 IgG_Negative + 3 IgG_Positive). **Batch is deliberately not
+included**: it is partially confounded with treatment (IgG_Negative is mostly
+batch 1, IgG_Positive mostly batch 3), so adding it would absorb the treatment
+signal (see Limitations).
+
+```{r batch-confounding}
+knitr::kable(table(meta$treatment, meta$batch), caption = "treatment × batch (note the imbalance)")
+```
+
+## 3. Differential expression (DESeq2)
+
+```{r deseq2}
+de <- run_deseq2(
+  counts   = counts,
+  coldata  = meta,
+  design   = ~ clone + treatment,
+  contrast = c("treatment", "IgG_Positive", "IgG_Negative")
+)
+res_shrink <- lfcShrink(de$dds, coef = "treatment_IgG_Positive_vs_IgG_Negative", type = "apeglm")
+de$res_df$log2FoldChange_shrunk <- res_shrink[de$res_df$gene_id, "log2FoldChange"]
+
+# gene_id is already the HGNC symbol.
+de$res_df$symbol <- de$res_df$gene_id
+write_results_table(de$res_df, file.path(TAB_DIR, paste0(ACC, "_DE_results.csv")))
+summary(de$res)
+cat("Significant (padj<0.05, |log2FC|>1):",
+    sum(!is.na(de$res_df$padj) & de$res_df$padj < 0.05 & abs(de$res_df$log2FoldChange) > 1), "\n")
+```
+
+## 4. Quality control
+
+```{r qc}
+grp <- meta$group
+save_fig(plot_library_sizes(counts, grp),      file.path(FIG_DIR, "qc_library_sizes.png"))
+save_fig(plot_count_distribution(counts, grp), file.path(FIG_DIR, "qc_count_distribution.png"), height = 6)
+
+vsd_mat <- SummarizedExperiment::assay(de$vsd)
+pc <- prcomp(t(vsd_mat)); ve <- round(100 * pc$sdev^2 / sum(pc$sdev^2), 1)
+pca_df <- data.frame(PC1 = pc$x[,1], PC2 = pc$x[,2], meta)
+p_pca <- ggplot(pca_df, aes(PC1, PC2, color = treatment, shape = clone)) +
+  geom_point(size = 4, alpha = 0.9) +
+  scale_color_manual(values = c(IgG_Negative = "#1b9e77", IgG_Positive = "#d95f02")) +
+  labs(title = "PCA (variance-stabilized)", color = "Sort", shape = "Clone",
+       x = paste0("PC1 (", ve[1], "%)"), y = paste0("PC2 (", ve[2], "%)")) + geo_theme()
+save_fig(p_pca, file.path(FIG_DIR, "qc_pca.png"))
+plot_sample_correlation(vsd_mat, group = meta$treatment,
+                        file = file.path(FIG_DIR, "qc_sample_correlation.png"))
+p_pca
+```
+
+## 5. DE figures
+
+```{r de-figs}
+save_fig(volcano_plot(de$res_df, title = "IgG-positive vs IgG-negative"), file.path(FIG_DIR, "volcano.png"))
+save_fig(ma_plot(de$res_df, title = "MA plot — IgG-positive vs IgG-negative"), file.path(FIG_DIR, "ma_plot.png"))
+top_gene_heatmap(de$vsd, de$res_df, n = 30, group = meta$treatment,
+                 file = file.path(FIG_DIR, "top_genes_heatmap.png"), id_col = "gene_id", label_col = "symbol")
+volcano_plot(de$res_df, title = "IgG-positive vs IgG-negative")
+```
+
+```{r de-table}
+knitr::kable(head(de$res_df[order(de$res_df$padj),
+                            c("symbol", "baseMean", "log2FoldChange", "padj")], 25),
+             digits = 3, caption = "Top 25 DE genes")
+```
+
+## 6. Functional enrichment (GO BP)
+
+```{r enrich}
+enr <- run_enrichment(de$res_df, orgdb = ORGDB, keytype = "SYMBOL",
+                      id_col = "gene_id", padj_thresh = 0.05, lfc_thresh = 1)
+if (!is.null(enr) && !is.null(enr$go_bp) && nrow(as.data.frame(enr$go_bp)) > 0) {
+  write_results_table(as.data.frame(enr$go_bp), file.path(TAB_DIR, paste0(ACC, "_GO_BP_enrichment.csv")))
+  save_fig(barplot(enr$go_bp, showCategory = 15) + ggtitle("GO BP enrichment"),
+           file.path(FIG_DIR, "go_bp_enrichment.png"), height = 7)
+  knitr::kable(head(as.data.frame(enr$go_bp)[, c("ID","Description","p.adjust","Count")], 15),
+               caption = "Top GO biological-process terms")
+} else cat("No significant GO-BP enrichment returned.\n")
+```
+
+## 7. Interpretation
+
+*Grounded in the rendered results (15,434 genes tested; **437 significant** at
+`padj < 0.05`, `|log2FC| > 1`, clone-adjusted).*
+
+- **A modest, real difference** separates IgG-positive from IgG-negative PL45
+  cells. Genes higher in **IgG-positive** cells include epithelial/differentiation
+  factors — **GRHL2** (log2FC ≈ +1.9), **SORL1**, **GALNT5**, **TNS4**,
+  **SH3TC2** — hinting at an epithelial-program shift in the IgG-binding fraction.
+- **Read with caution — the signal is noisy.** Several of the most extreme
+  features are rRNA/snRNA / pseudogenes (RNA5-8S5, RNU5F-1, NUDT4P2), and the GO
+  enrichment is dominated by **taste-receptor** and **snRNP-assembly** terms —
+  patterns that usually reflect technical/non-coding artifacts rather than a
+  clean biological program.
+- **Confounding matters here.** Batch is partially confounded with the IgG sort
+  (Limitations), so part of this modest effect could be technical. A
+  batch-balanced re-design, or filtering rRNA/snRNA features, would be the right
+  way to sharpen the biological signal before drawing strong conclusions.
+
+> Honest bottom line: GSE334534 is *suitable* for DESeq2 (raw counts, balanced
+> clone×sort design) and yields a real but **modest, partly-confounded** result —
+> a good example of a dataset that passes triage yet warrants caveats, not a
+> headline finding.
+
+## 8. Limitations
+
+- **Batch is partially confounded with the IgG sort** (IgG_Negative ≈ batch 1,
+  IgG_Positive ≈ batch 3), so a batch-corrected model is not identifiable; the
+  reported effect may include a residual batch component. The clone-adjusted
+  design is the cleanest identifiable model here.
+- **RSEM expected counts were rounded** to integers for DESeq2.
+- **Clone (A1/A14) parsed from the sample name**, not a `characteristics` field
+  (`cell line` is constant `PL45`); confirmed by consistent name tokens.
+- Two clones, n = 3 per clone×sort — adequate for DE but a limited sampling.
+- GSE334534 has no GEO series matrix; counts are the submitter's RSEM table.
+
+## Reproducibility
+
+```{r session}
+sessionInfo()
+```

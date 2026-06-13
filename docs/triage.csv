@@ -1,5 +1,6 @@
 "accession","organism","assay","n_samples","min_reps","raw_counts","normalized","metadata","design","method","decision","promoted_from","reason"
 "GSE157830","Homo sapiens","bulk RNA-seq","12","3","yes","yes","clear","~ cell_line + treatment","DESeq2","include",NA,"Gene-level raw (RSEM) counts available — DESeq2 is statistically valid."
+"GSE334534","Homo sapiens","bulk RNA-seq","12","6","yes","no","clear","~ clone + treatment","DESeq2","include",NA,"Bulk RNA-seq assay."
 "GSE60450","Mus musculus","bulk RNA-seq","12","2","yes","no","clear","~ cell_type + stage","DESeq2","include",NA,"Gene-wise raw count matrix deposited (GSE60450_Lactation-GenewiseCounts.txt.gz) — DESeq2/edgeR valid."
 "GSE78220","Homo sapiens","bulk RNA-seq","28","13","recount3","yes","moderate","~ response","DESeq2 (recount3 counts)","include","conditional","PROMOTED from conditional: GEO deposits only FPKM, but raw gene counts were obtained from recount3 (SRP070710), making DESeq2 valid."
 "GSE2034","Homo sapiens","microarray","286","106","no","yes","moderate","~ outcome  (limma on log2 intensities — NOT a count model)","limma (microarray); DESeq2/edgeR not applicable","exclude",NA,"Affymetrix microarray, not RNA-seq — there are no sequencing counts, so the count-based DESeq2 framework does not apply."

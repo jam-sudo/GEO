@@ -240,6 +240,7 @@ See **[`docs/TRIAGE.md`](docs/TRIAGE.md)** for the live table. Current datasets:
 |---------|----------|----------|----------|-----|
 | [GSE157830](projects/GSE157830/) | *H. sapiens* | GOT1 knockdown vs control in PDAC | **include** ✓ rendered | gene-level raw counts; 933 DEGs, GOT1 top hit |
 | [GSE60450](projects/GSE60450/) | *M. musculus* | luminal vs basal mammary cells across stages | **include** ✓ rendered | raw count matrix; 7,347 DEGs, markers validate labels |
+| [GSE334534](projects/GSE334534/) | *H. sapiens* | IgG-positive vs IgG-negative PL45 cells | **include** ✓ rendered | RSEM counts; 437 DEGs — modest/confounded, honest caveats |
 | [GSE78220](projects/GSE78220/) | *H. sapiens* | anti-PD-1 responders vs non-responders | **include** ✓ promoted | FPKM-only on GEO → **promoted** with recount3 counts; 415 DEGs (IPRES signature) |
 | [GSE2034](projects/GSE2034/) | *H. sapiens* | breast-cancer metastasis vs relapse-free | **exclude** | **microarray**, not RNA-seq — wrong assay for DESeq2 |
 
