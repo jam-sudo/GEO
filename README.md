@@ -94,6 +94,38 @@ make render PROJ=GSE123456
 Prefer a single terminal command per step? The **`geo` CLI below** does triage,
 scaffolding, and running without the Makefile.
 
+## Getting the data from GEO
+
+There are two kinds of GEO data, fetched at different stages:
+
+**1. Metadata (SOFT)** — fetched automatically, no manual step.
+- `geo triage` / `geo init-project` download series + sample metadata into `.geo_cache/`.
+- Each `analysis.qmd` also pulls the verbatim sample metadata via `GEOquery::getGEO()`.
+
+**2. Raw count matrices** — downloaded per project. These live in
+`projects/<ACC>/data/raw/`, which is **gitignored** (large and reproducible), so
+a fresh clone starts empty. Fetch the counts *before* `make render` / `geo run`.
+The `geo` CLI is **triage-only** and does not download count matrices.
+
+```bash
+# GSE157830 / GSE60450 — counts are in the GEO supplementary files:
+mkdir -p projects/GSE157830/data/raw
+curl -L -o projects/GSE157830/data/raw/GSE157830_genes.counts.txt.gz \
+  https://ftp.ncbi.nlm.nih.gov/geo/series/GSE157nnn/GSE157830/suppl/GSE157830_genes.counts.txt.gz
+
+# GSE78220 — GEO has FPKM only, so raw counts come from recount3:
+Rscript projects/GSE78220/scripts/prep_metadata.R
+Rscript projects/GSE78220/scripts/prep_counts.R
+
+# Generic — download ALL supplementary files of any series (language-agnostic):
+Rscript -e 'GEOquery::getGEOSuppFiles("GSE123456", baseDir="projects/GSE123456/data/raw")'
+```
+
+The GEO FTP path follows the pattern
+`…/geo/series/GSE<nnn>nnn/GSE<full>/suppl/<file>` where `GSE<nnn>nnn` truncates
+the last three digits (e.g. `GSE157830` → `GSE157nnn`). Each project's README
+lists the exact download command for that dataset.
+
 ## Command-line interface: `geo`
 
 A Python CLI (`geo_portfolio`) wraps the same workflow for the terminal. It is an

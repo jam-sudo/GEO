@@ -1,64 +1,63 @@
-# GSE60450 — Luminal vs basal mammary epithelium across development
+# GSE60450 — <short descriptive title>
 
-> A reproducible re-analysis of mouse mammary RNA-seq comparing the two
-> epithelial lineages — **luminal** (milk-producing) and **basal**
-> (contractile myoepithelial) — across virgin, pregnant, and lactating stages.
+> One-sentence summary of the dataset and the comparison, readable by a
+> non-specialist. *Replace this line.*
+
+## Suitability review
+
+A written suitability review is completed **before** any analysis code — see
+[`SUITABILITY.md`](SUITABILITY.md) for the organism/assay/platform
+inventory, data-type determination, chosen DE method, cleaned-metadata plan,
+assumptions log, and the go/no-go decision.
 
 ## Biological question
 
-The mammary gland is built from basal and luminal epithelial cells and remodels
-across pregnancy and lactation (Fu *et al.*, 2015). **Which genes separate the
-luminal from the basal lineage, accounting for developmental stage?**
+*What is being compared, in what system, and why does it matter?*
 
 ## Dataset
 
 | Field | Value |
 |-------|-------|
 | GEO accession | [GSE60450](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE60450) |
-| Organism | *Mus musculus* (`org.Mm.eg.db`) |
-| Platform | GPL13112 — Illumina HiSeq 2000 |
-| Samples | 12: 2 lineages × 3 stages × 2 mice |
-| Data type | **Gene-wise raw counts** (Rsubread featureCounts; integers) |
-| Design formula | `~ stage + cell_type` |
-| Primary contrast | luminal vs basal (n = 6 vs 6) |
+| Organism | *fill* |
+| Platform (GPL) | *fill* |
+| Samples | *fill* |
+| Data type | *raw counts / normalized only / microarray* (from the decision gate) |
+| Design formula | `~ <group_col>` |
+| Contrast(s) | *fill* |
 
-Suitability report: [`SUITABILITY.md`](SUITABILITY.md) (decision: **include**).
-
-## Suitability & metadata notes
-
-- **Raw counts available** — single gene-wise count matrix; integers, no rounding.
-- **Group labels** from GEO `source_name_ch1` / titles; count-column codes
-  (`MCL1-DG…`) mapped to samples via each GSM's **supplementary-file name**
-  (`GSM..._MCL1-XX_...`) — an authoritative key, not guessed from titles. See
-  [`data/GSE60450_metadata_clean.csv`](data/GSE60450_metadata_clean.csv).
+Sample metadata is downloaded from GEO and saved verbatim to
+`data/GSE60450_sample_metadata.csv` — it is never hand-edited or invented.
 
 ## How to reproduce
 
 ```bash
-mamba activate geo-rnaseq
-make render PROJ=GSE60450
+mamba activate geo-rnaseq          # from the repo-root environment
+make render PROJ=GSE60450         # renders analysis.qmd -> analysis.html
 ```
 
 ## Results
 
-**7,347 DE genes** (padj<0.05, |log2FC|>1) between luminal and basal, from
-18,418 tested — the lineage divide is deep, as expected for two distinct cell
-types (contrast GSE157830's ~900 genes from a single-gene knockdown).
+Key figures (in `results/figures/`):
 
-- **Markers confirm the labels:** basal-high Krt5 (−9.0), Acta2 (−8.9), Krt14
-  (−6.8); luminal-high Krt18 (+3.9), Esr1 (+2.5), Krt8 (+2.0).
-- **Basal program (GO):** extracellular-matrix organization, cell-substrate
-  adhesion, muscle contraction — the contractile myoepithelial phenotype.
-- **Luminal program:** Tph1 (serotonin/lactation), Calca, secretory Wfdc genes.
+- `qc_library_sizes.png`, `qc_count_distribution.png` — library QC
+- `qc_pca.png`, `qc_sample_correlation.png` — sample structure
+- `volcano.png`, `ma_plot.png` — differential expression overview
+- `top_genes_heatmap.png` — top DE genes
 
-Figures in [`results/figures/`](results/figures/); full DE table in
-[`results/tables/GSE60450_DE_results.csv`](results/tables/GSE60450_DE_results.csv);
-rendered report: [`analysis.html`](analysis.html).
+Tables (in `results/tables/`):
+
+- `GSE60450_DE_results.csv` — full DE table (gene ID, symbol, log2FC, p, padj)
+- `GSE60450_GO_BP_enrichment.csv` — GO enrichment
+
+## Interpretation
+
+*2-3 sentences on the headline biological finding.*
 
 ## Limitations
 
-- **Only 2 mice per group** — the luminal-vs-basal contrast pools to n = 6/side
-  (well powered), but stage-specific contrasts (n = 2) are exploratory.
-- Additive design assumes a stage-consistent lineage difference; a
-  `stage:cell_type` interaction would test lineage-specific remodelling.
-- Entrez IDs from the submitter's matrix; a few may be retired in current builds.
+*Dataset-specific caveats — data type, sample size, confounders, annotation gaps.*
+
+## Notes
+
+Working notes and decisions are in `notes/`.

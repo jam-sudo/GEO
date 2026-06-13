@@ -52,6 +52,13 @@ clusterProfiler on the in-file Entrez IDs. Full code: [`analysis.qmd`](analysis.
 
 ```bash
 mamba activate geo-rnaseq            # built from ../../environment/environment.yml
+
+# 1. Download the raw count matrix from GEO (data/raw/ is gitignored).
+mkdir -p projects/GSE157830/data/raw
+curl -L -o projects/GSE157830/data/raw/GSE157830_genes.counts.txt.gz \
+  https://ftp.ncbi.nlm.nih.gov/geo/series/GSE157nnn/GSE157830/suppl/GSE157830_genes.counts.txt.gz
+
+# 2. Render (downloads verbatim sample metadata via GEOquery, then runs DESeq2).
 make render PROJ=GSE157830           # from the repo root -> analysis.html
 ```
 
