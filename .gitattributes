@@ -1,0 +1,10 @@
+# Rendered Quarto reports are generated artifacts (quarto render). Keep them in
+# the repo so reviewers can read them, but exclude them from GitHub's language
+# statistics (HTML is a 'markup' language and otherwise dominates the bar) and
+# collapse them in diffs.
+projects/**/*.html linguist-generated=true
+
+# Generated result tables (DE/GO/enrichment dumps) — collapse in diffs too.
+# (CSV is a 'data' language already excluded from stats; this only tidies diffs.
+#  Scoped to results/ so hand-authored data/*.csv metadata diffs stay visible.)
+projects/**/results/**/*.csv linguist-generated=true
