@@ -55,7 +55,7 @@ transcriptome by RNA-seq.
 
 - **Accession:** [GSE157830](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE157830) · *Homo sapiens* · Illumina NovaSeq 6000 (GPL24676)
 - **Design:** 2 cell lines (Tu8902, MiaPaCa2) × 2 treatments (control, GOT1 knockdown) × 3 replicates = 12 samples.
-- A full pre-analysis suitability review is in [`notes/suitability.md`](notes/suitability.md).
+- A full pre-analysis suitability report is in [`SUITABILITY.md`](SUITABILITY.md).
 
 ## 1. Provenance: save verbatim GEO metadata
 

@@ -15,6 +15,7 @@ dependencies:
   - r-here
   - r-knitr
   - r-rmarkdown
+  - r-yaml             # parse SUITABILITY.md front-matter for the triage table
   - r-ggrepel
   - r-pheatmap
   - r-rcolorbrewer

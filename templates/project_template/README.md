@@ -6,7 +6,7 @@
 ## Suitability review
 
 A written suitability review is completed **before** any analysis code — see
-[`notes/suitability.md`](notes/suitability.md) for the organism/assay/platform
+[`SUITABILITY.md`](SUITABILITY.md) for the organism/assay/platform
 inventory, data-type determination, chosen DE method, cleaned-metadata plan,
 assumptions log, and the go/no-go decision.
 

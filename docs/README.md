@@ -21,11 +21,15 @@ requires raw integer counts.** Every project therefore runs
 
 ## Standard workflow per dataset
 
-0. **Suitability review (gate, before any code)** — inspect the GEO record and
-   fill `notes/suitability.md`: organism, assay, platform, sample count, file
-   inventory, data-type determination, the statistically appropriate DE method,
-   a cleaned metadata plan, an assumptions log, and a go/no-go decision. Group
-   labels come from `characteristics_ch1.*` fields, never from sample titles.
+0. **Suitability report (triage gate, before any code)** — inspect the GEO
+   record and fill `projects/<ACC>/SUITABILITY.md`: organism, assay, sample
+   count, available processed files, raw-counts/normalized availability,
+   replicate counts per group, metadata clarity, possible contrasts, the
+   recommended statistical design, and an explicit **include / conditional /
+   exclude** decision with reasons. Its YAML front-matter feeds the
+   cross-dataset table (`make triage` → [`TRIAGE.md`](TRIAGE.md)). Group labels
+   come from `characteristics_ch1.*` fields, never from sample titles. DE
+   proceeds **only** when `decision: include`.
 1. **Acquire** — `fetch_geo()` downloads the series matrix + supplementary files
    and writes sample metadata to disk verbatim. Metadata is never invented.
 2. **Assess** — `assess_data_type()` confirms the verdict programmatically.

@@ -2,15 +2,16 @@ ENV ?= geo-rnaseq
 ORG ?= org.Hs.eg.db
 SHELL := /bin/bash
 
-.PHONY: help env env-update new render render-all clean
+.PHONY: help env env-update new triage render render-all clean
 
 help:
-	@echo "GEO RNA-seq portfolio — make targets:"
+	@echo "GEO RNA-seq reanalysis framework — make targets:"
 	@echo "  make env                       Create the mamba environment ($(ENV))"
 	@echo "  make env-update                Update the environment from environment.yml"
 	@echo "  make new ACC=GSE123456 [ORG=org.Mm.eg.db]"
-	@echo "                                 Scaffold a new project from the template"
-	@echo "  make render PROJ=GSE123456     Render one project's analysis.qmd -> HTML"
+	@echo "                                 Scaffold a new project (+ SUITABILITY.md) from the template"
+	@echo "  make triage                    Rebuild docs/TRIAGE.md from all SUITABILITY.md records"
+	@echo "  make render PROJ=GSE123456     Render one project's analysis.qmd -> HTML (include-only)"
 	@echo "  make render-all                Render every project under projects/"
 	@echo "  make clean                     Remove rendered HTML/_files artifacts"
 	@echo ""
@@ -25,6 +26,9 @@ env-update:
 new:
 	@test -n "$(ACC)" || { echo "Usage: make new ACC=GSE123456 [ORG=org.Mm.eg.db]"; exit 1; }
 	Rscript scripts/new_project.R $(ACC) $(ORG)
+
+triage:
+	Rscript scripts/build_triage.R
 
 render:
 	@test -n "$(PROJ)" || { echo "Usage: make render PROJ=GSE123456"; exit 1; }

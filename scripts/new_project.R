@@ -29,7 +29,9 @@ ok <- file.copy(list.files(template, full.names = TRUE), dest, recursive = TRUE)
 if (!all(ok)) stop("Failed to copy some template files.")
 
 # Substitute placeholders in the text files.
-for (f in c(file.path(dest, "analysis.qmd"), file.path(dest, "README.md"))) {
+for (f in c(file.path(dest, "SUITABILITY.md"),
+            file.path(dest, "analysis.qmd"),
+            file.path(dest, "README.md"))) {
   txt <- readLines(f, warn = FALSE)
   txt <- gsub("GSEXXXXXX",   acc, txt, fixed = TRUE)
   txt <- gsub("ORGANISM_DB", org, txt, fixed = TRUE)
@@ -37,8 +39,9 @@ for (f in c(file.path(dest, "analysis.qmd"), file.path(dest, "README.md"))) {
 }
 
 cat("Created project:", dest, "\n")
-cat("Next steps:\n")
-cat("  1. Open", file.path(dest, "analysis.qmd"), "and fill the biological question.\n")
-cat("  2. Render once to download data + see the data-type verdict:\n")
-cat("       make render PROJ=", acc, "\n", sep = "")
-cat("  3. Set params$group_col and params$contrast, customize the count-loading chunk.\n")
+cat("Triage-first workflow:\n")
+cat("  1. Inspect the GEO record and FILL", file.path(dest, "SUITABILITY.md"),
+    "\n     (organism, files, raw counts?, replicates, design, decision).\n")
+cat("  2. Rebuild the cross-dataset table:  make triage\n")
+cat("  3. ONLY if decision: include — customize", file.path(dest, "analysis.qmd"),
+    "and run:\n       make render PROJ=", acc, "\n", sep = "")

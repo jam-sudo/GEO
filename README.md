@@ -1,89 +1,110 @@
-# GEO RNA-seq Differential Expression Portfolio
+# A careful public RNA-seq reanalysis workflow
 
-A portfolio of reproducible RNA-seq differential-expression re-analyses of
-public [GEO](https://www.ncbi.nlm.nih.gov/geo/) datasets. Each project starts
-from a clear biological question, downloads real GEO metadata (never invented),
-determines whether the data are suitable for standard differential expression,
-and produces publication-quality figures with a concise biological
-interpretation.
+This repository is a **reproducible framework for reanalyzing public GEO RNA-seq
+datasets** — built to demonstrate judgment, not just to produce plots. Every
+dataset is *triaged before it is touched*: a standardized suitability report
+decides whether the data can support a correct differential-expression analysis
+at all, and **only datasets that pass are analyzed**.
 
 > **Author:** jam-sudo
 
-## Why this repo is structured the way it is
+The emphasis, in order:
 
-GEO datasets are inconsistent — some provide raw counts, some only normalized
-values, some are microarray. A core principle here is **honesty about the
-data**: before running DESeq2, every project runs a *decision gate* that
-classifies the data type and refuses to treat normalized values as raw counts.
-See [`docs/README.md`](docs/README.md) for the full methodology.
+1. **Dataset triage** — a written, comparable suitability report per accession; some datasets are *excluded*, with reasons.
+2. **Reproducibility** — one pinned environment, scripted runs, embedded `sessionInfo()`.
+3. **Correct statistical design** — explicit design formulas; no DESeq2 on normalized values; replication checked before modelling.
+4. **Biological interpretation** — results read in light of the underlying biology, not just thresholded gene lists.
+5. **Limitations & assumptions** — documented honestly for every dataset.
+6. **Comparison across reanalyses** — a cross-dataset triage table makes the judgments comparable at a glance.
+
+## Start here: the triage table
+
+👉 **[`docs/TRIAGE.md`](docs/TRIAGE.md)** — every dataset's suitability verdict
+(include / conditional / exclude) in one comparison table, generated from each
+project's machine-readable suitability record.
+
+## How a dataset moves through the framework
+
+```
+GEO accession
+   │
+   ▼
+[1] Suitability report  ──►  projects/<ACC>/SUITABILITY.md
+   │   organism · assay · files · raw counts? · normalized? · replicates ·
+   │   metadata clarity · possible contrasts · recommended design · decision
+   │
+   ├─ decision: exclude / conditional ──►  documented, NO DESeq2 forced
+   │
+   ▼ decision: include
+[2] Reproducible DE analysis  ──►  projects/<ACC>/analysis.qmd
+       QC · explicit-design DESeq2 · volcano/MA/heatmap · enrichment ·
+       interpretation · limitations
+```
+
+The triage step is metadata-only (it doesn't even need R), so suitability is
+decided from evidence — file inventory, value ranges, `characteristics` fields —
+*before* committing to an analysis.
 
 ## Repository structure
 
 ```
-geo-rnaseq-portfolio/
-├── README.md                # you are here
-├── Makefile                 # make env / new / render / render-all
-├── environment/             # mamba environment.yml (R + Bioconductor + Quarto)
+├── README.md                      # this file
+├── docs/
+│   ├── TRIAGE.md                  # cross-dataset comparison (the headline)
+│   ├── triage.csv                 # machine-readable triage table
+│   └── README.md                  # methodology & conventions
+├── Makefile                       # make triage / env / new / render
+├── environment/environment.yml    # pinned R + Bioconductor + Quarto (mamba)
 ├── scripts/
-│   ├── geo_helpers.R        # reusable analysis functions (the engine)
-│   └── new_project.R        # scaffold a project from the template
-├── templates/
-│   └── project_template/    # copyable per-dataset skeleton (qmd + README + dirs)
-├── projects/
-│   └── GSEXXXXXX/           # one folder per dataset
-│       ├── README.md        # question, samples, results, limitations
-│       ├── analysis.qmd     # the reproducible report
-│       ├── data/            # downloaded GEO data (raw files gitignored)
-│       ├── results/
-│       │   ├── figures/     # publication-quality plots (tracked)
-│       │   └── tables/      # DE + enrichment tables (tracked)
-│       ├── scripts/         # dataset-specific code, if any
-│       └── notes/           # working notes / decisions
-└── docs/                    # methodology & conventions
+│   ├── geo_helpers.R              # reusable analysis engine (incl. the data-type gate)
+│   ├── build_triage.R             # aggregate suitability records -> TRIAGE.md
+│   └── new_project.R              # scaffold a project from the template
+├── templates/project_template/    # SUITABILITY.md + analysis.qmd + skeleton
+└── projects/
+    └── GSE157830/
+        ├── SUITABILITY.md         # the triage report (decision gate)
+        ├── README.md              # question, methods, results, interpretation, limits
+        ├── analysis.qmd           # reproducible DE report
+        ├── data/  results/{figures,tables}/  notes/
 ```
 
 ## Quick start
 
 ```bash
-# 1. Build the environment once (R, Bioconductor, Quarto).
-make env
-mamba activate geo-rnaseq
+# Build the pinned environment once.
+make env && mamba activate geo-rnaseq
 
-# 2. Scaffold a dataset and render it (first render downloads data + prints
-#    the data-type verdict).
+# Triage a dataset: scaffold, then fill its SUITABILITY.md from the GEO record.
 make new ACC=GSE123456 ORG=org.Hs.eg.db
+
+# Regenerate the cross-dataset triage table from all suitability records.
+make triage
+
+# Analyze only datasets whose decision is "include".
 make render PROJ=GSE123456
 ```
 
-Then open `projects/GSE123456/analysis.qmd`, fill the biological question, set
-the count-loading chunk, and choose `params$group_col` / `params$contrast`.
+## What "demonstrates judgment" means here concretely
 
-## What each project delivers
+- The suitability report can return **exclude** (normalized-only data, no
+  replicates, confounded design, wrong assay) — saying *no* with a reason is a
+  first-class outcome, not a failure.
+- The analysis engine **refuses** to run DESeq2 on non-integer/normalized values
+  (`run_deseq2()` stops; `assess_data_type()` classifies first).
+- Group labels are read from GEO `characteristics` fields, **never guessed** from
+  sample titles; cleaning steps and assumptions are logged.
 
-- **Documented provenance** — GEO accession + sample metadata saved verbatim.
-- **Data-type verdict** — raw counts vs normalized-only vs unsuitable, stated up front.
-- **QC** — library sizes, count distribution, PCA, sample-correlation heatmap.
-- **Differential expression** (when valid) — results table (gene ID, symbol,
-  log2FC, p-value, adjusted p-value), volcano plot, MA plot, top-gene heatmap.
-- **Functional interpretation** — GO/pathway enrichment + a written summary.
-- **Limitations** — an honest, dataset-specific caveats section.
-
-## Reproducibility
-
-One mamba environment pins the whole toolchain; every report embeds
-`sessionInfo()`; any analysis re-runs with a single `make render`. See
-[`environment/environment.yml`](environment/environment.yml).
+See [`docs/README.md`](docs/README.md) for the full methodology.
 
 ## Projects
 
-| Dataset | Organism | Question | Data type | Status |
-|---------|----------|----------|-----------|--------|
-| [GSE157830](projects/GSE157830/) | *H. sapiens* | GOT1 knockdown vs control in PDAC (Tu8902, MiaPaCa2) | Gene-level RSEM raw counts | Suitability ✓, analysis coded; renders once env is built |
+See **[`docs/TRIAGE.md`](docs/TRIAGE.md)** for the live table. Current datasets:
 
-<!-- Add a row per dataset as projects are completed. -->
+| Dataset | Organism | Question | Decision | Status |
+|---------|----------|----------|----------|--------|
+| [GSE157830](projects/GSE157830/) | *H. sapiens* | GOT1 knockdown vs control in PDAC (Tu8902, MiaPaCa2) | **include** | Suitability ✓, analysis coded; renders once env is built |
 
 ## Disclaimer
 
-These are independent re-analyses of public data for portfolio and educational
-purposes; they are not affiliated with or endorsed by the original data
-submitters.
+Independent reanalyses of public data for portfolio and educational purposes;
+not affiliated with or endorsed by the original data submitters.

@@ -34,7 +34,7 @@ Raw counts are downloaded from GEO; the **cleaned design table** is
 
 ## Suitability review (done before any analysis)
 
-See [`notes/suitability.md`](notes/suitability.md) for the full review. Headlines:
+See [`SUITABILITY.md`](SUITABILITY.md) for the full triage report. Headlines:
 
 - **Gene-level raw counts are available** (`GSE157830_genes.counts.txt.gz`) — DESeq2 is valid.
 - Values are **RSEM expected counts** (fractional) → **rounded to integers** before DESeq2. FPKM/TPM files are *not* used.
