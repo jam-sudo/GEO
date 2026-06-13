@@ -1,0 +1,34 @@
+name: geo-rnaseq
+# Reproducible environment for the GEO RNA-seq portfolio.
+# Build:   mamba env create -f environment/environment.yml
+# Update:  mamba env update -f environment/environment.yml --prune
+# Activate: mamba activate geo-rnaseq
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - r-base>=4.3
+  - quarto>=1.4
+  # --- core R / tidyverse / reporting ---
+  - r-tidyverse
+  - r-data.table
+  - r-here
+  - r-knitr
+  - r-rmarkdown
+  - r-ggrepel
+  - r-pheatmap
+  - r-rcolorbrewer
+  - r-r.utils          # gunzip-ing GEO supplementary files
+  # --- Bioconductor: acquisition, DE, annotation, enrichment ---
+  - bioconductor-geoquery
+  - bioconductor-biobase
+  - bioconductor-summarizedexperiment
+  - bioconductor-deseq2
+  - bioconductor-edger
+  - bioconductor-limma
+  - bioconductor-apeglm          # LFC shrinkage
+  - bioconductor-annotationdbi
+  - bioconductor-clusterprofiler
+  - bioconductor-org.hs.eg.db    # human; add others as needed:
+  # - bioconductor-org.mm.eg.db  # mouse
+  # - bioconductor-org.rn.eg.db  # rat

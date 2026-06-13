@@ -1,0 +1,218 @@
+---
+title: "RNA-seq Differential Expression — GSEXXXXXX"
+subtitle: "GEO RNA-seq Portfolio"
+author: "Your Name"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-tools: true
+    theme: cosmo
+    embed-resources: true
+    fig-width: 7
+    fig-height: 5
+params:
+  accession: "GSEXXXXXX"
+  organism_db: "ORGANISM_DB"   # e.g. org.Hs.eg.db (human), org.Mm.eg.db (mouse)
+  keytype: "ENSEMBL"            # ID type of the count rownames: ENSEMBL / SYMBOL / ENTREZID
+  group_col: null              # metadata column defining the comparison (set after inspecting samples)
+  contrast: null               # c(group_col, numerator, denominator), e.g. c("condition","KO","WT")
+execute:
+  warning: true
+  message: false
+---
+
+```{r setup}
+#| include: false
+source(here::here("scripts", "geo_helpers.R"))
+library(here)
+
+ACC      <- params$accession
+DATA_DIR <- here("projects", ACC, "data")
+FIG_DIR  <- here("projects", ACC, "results", "figures")
+TAB_DIR  <- here("projects", ACC, "results", "tables")
+dir.create(FIG_DIR, recursive = TRUE, showWarnings = FALSE)
+dir.create(TAB_DIR, recursive = TRUE, showWarnings = FALSE)
+```
+
+## Biological question
+
+<!-- FILL: State the biological question in 2-3 sentences. What conditions are
+     compared, in what tissue/cell type, and what would a meaningful result mean? -->
+
+> *Placeholder — replace with the dataset's biological question.*
+
+**GEO accession:** `{r} ACC`
+**Organism annotation DB:** `{r} params$organism_db`
+
+## 1. Data acquisition
+
+We download the GEO series matrix (sample metadata + any matrix expression
+values) and the supplementary files (raw counts, when the authors deposited
+them there). The raw sample metadata is written to disk unmodified.
+
+```{r acquire}
+geo <- fetch_geo(ACC, dest_dir = DATA_DIR, get_supp = TRUE)
+cat("Samples:", nrow(geo$pheno), " | Supplementary files:", length(geo$supp_files), "\n")
+```
+
+## 2. Data-type assessment (decision gate)
+
+Before any differential expression, we determine **what GEO actually provided**.
+Raw counts → DESeq2 is valid. Normalized values only → DESeq2 is *not* valid and
+we say so explicitly. Microarray / unusable → we flag the dataset.
+
+```{r assess}
+verdict <- assess_data_type(geo)
+print(verdict)
+
+# Flags used to conditionally evaluate later chunks.
+can_deseq2 <- isTRUE(verdict$suitable_for_deseq2)
+```
+
+```{r assess-flag}
+#| echo: false
+#| results: asis
+if (!can_deseq2) {
+  cat("::: {.callout-warning}\n")
+  cat("## This dataset is not standard raw-count RNA-seq input\n\n")
+  cat(verdict$reason, "\n\n**Recommendation:** ", verdict$recommendation, "\n")
+  cat(":::\n")
+}
+```
+
+<!-- If can_deseq2 is FALSE: load the count matrix below is skipped. Document the
+     limitation in the Limitations section and, if appropriate, run a limma-based
+     analysis on the normalized values instead (clearly labelled as such). -->
+
+## 3. Load count matrix
+
+<!-- FILL: Adjust this chunk to read the actual count file for THIS dataset.
+     Supplementary file names vary. `verdict$count_files` lists candidates. -->
+
+```{r load-counts}
+#| eval: !expr can_deseq2
+# Example for a typical tab-delimited gene x sample count file:
+# counts_path <- verdict$count_files[1]
+# counts <- as.matrix(data.table::fread(counts_path), rownames = 1)
+#
+# Placeholder so the template renders before customization:
+stopifnot("Set the count-loading code for this dataset." = exists("counts"))
+```
+
+## 4. Sample metadata & experimental design
+
+```{r samples}
+samp <- summarize_samples(geo$pheno)
+cat("Candidate grouping columns:\n"); print(samp$candidate_group_cols)
+knitr::kable(samp$preview, caption = "Sample metadata preview")
+
+# Save a tidy metadata summary for the portfolio.
+write_results_table(geo$pheno, file.path(TAB_DIR, paste0(ACC, "_sample_metadata.csv")))
+```
+
+```{r contrasts}
+#| eval: !expr (!is.null(params$group_col))
+proposed <- propose_contrasts(geo$pheno, params$group_col)
+cat("Group sizes:\n"); print(proposed$group_sizes)
+cat("\nProposed pairwise contrasts:\n"); str(proposed$contrasts, max.level = 2)
+```
+
+**Design formula:** `~ {r} if (!is.null(params$group_col)) params$group_col else "<group_col>"`
+(make the design explicit; add batch/covariate terms here if the metadata supports it).
+
+## 5. Quality control
+
+```{r qc}
+#| eval: !expr can_deseq2
+group <- if (!is.null(params$group_col)) factor(geo$pheno[[params$group_col]]) else NULL
+
+save_fig(plot_library_sizes(counts, group),      file.path(FIG_DIR, "qc_library_sizes.png"))
+save_fig(plot_count_distribution(counts, group), file.path(FIG_DIR, "qc_count_distribution.png"))
+
+# PCA / sample correlation use a variance-stabilized matrix once DESeq2 has run.
+```
+
+## 6. Differential expression
+
+```{r de}
+#| eval: !expr (can_deseq2 && !is.null(params$group_col) && !is.null(params$contrast))
+coldata <- geo$pheno[colnames(counts), , drop = FALSE]
+coldata[[params$group_col]] <- factor(coldata[[params$group_col]])
+
+de <- run_deseq2(
+  counts   = counts,
+  coldata  = coldata,
+  design   = as.formula(paste("~", params$group_col)),
+  contrast = params$contrast
+)
+
+# QC that needs the vst object.
+save_fig(plot_pca(SummarizedExperiment::assay(de$vsd),
+                  coldata[[params$group_col]], "PCA (variance-stabilized)"),
+         file.path(FIG_DIR, "qc_pca.png"))
+plot_sample_correlation(SummarizedExperiment::assay(de$vsd),
+                        coldata[[params$group_col]],
+                        file = file.path(FIG_DIR, "qc_sample_correlation.png"))
+
+# Annotate symbols and save the full results table.
+de$res_df <- annotate_symbols(de$res_df, orgdb = params$organism_db,
+                              keytype = params$keytype)
+write_results_table(de$res_df, file.path(TAB_DIR, paste0(ACC, "_DE_results.csv")))
+
+summary(de$res)
+```
+
+```{r de-figs}
+#| eval: !expr (can_deseq2 && !is.null(params$group_col) && !is.null(params$contrast))
+save_fig(volcano_plot(de$res_df), file.path(FIG_DIR, "volcano.png"))
+save_fig(ma_plot(de$res_df),      file.path(FIG_DIR, "ma_plot.png"))
+top_gene_heatmap(de$vsd, de$res_df, n = 30,
+                 group = coldata[[params$group_col]],
+                 file = file.path(FIG_DIR, "top_genes_heatmap.png"))
+
+knitr::kable(head(de$res_df, 20), caption = "Top 20 differentially expressed genes")
+```
+
+## 7. Functional enrichment
+
+```{r enrich}
+#| eval: !expr (can_deseq2 && exists("de"))
+enr <- run_enrichment(de$res_df, orgdb = params$organism_db, keytype = params$keytype)
+if (!is.null(enr) && !is.null(enr$go_bp) && nrow(as.data.frame(enr$go_bp)) > 0) {
+  write_results_table(as.data.frame(enr$go_bp),
+                      file.path(TAB_DIR, paste0(ACC, "_GO_BP_enrichment.csv")))
+  knitr::kable(head(as.data.frame(enr$go_bp)[, c("ID","Description","p.adjust","Count")], 15),
+               caption = "Top GO biological-process terms")
+} else {
+  cat("No significant GO enrichment (or annotation unavailable).\n")
+}
+```
+
+## 8. Interpretation
+
+<!-- FILL: 1-2 paragraphs. What are the top genes/pathways? Do they fit the
+     known biology of the comparison? What is the headline takeaway? Write for
+     both a technical reviewer and an interested non-specialist. -->
+
+> *Placeholder — replace with the biological interpretation of the results.*
+
+## 9. Limitations
+
+<!-- FILL honestly. Examples to consider:
+     - Data type (raw counts vs normalized-only) and what that constrains.
+     - Sample size / unbalanced groups / no replicates.
+     - Confounders or batch effects in the metadata.
+     - Annotation gaps (ID mapping coverage).
+     - Whether the chosen contrast is the only valid one. -->
+
+- *Placeholder — list dataset-specific limitations here.*
+- Data-type verdict for this dataset: **`{r} verdict$type`** — `{r} verdict$reason`
+
+## Reproducibility
+
+```{r session}
+sessionInfo()
+```

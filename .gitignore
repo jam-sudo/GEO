@@ -1,0 +1,30 @@
+# --- R ---
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# --- Quarto / knitr render artifacts ---
+**/*_files/
+**/*_cache/
+**/.quarto/
+
+# --- Raw downloads & large data ---
+# Keep these OUT of git; provenance is documented + metadata CSV is tracked.
+projects/*/data/raw/
+projects/*/data/*.gz
+projects/*/data/*.tar
+projects/*/data/*.zip
+projects/*/data/*.CEL
+*.sqlite
+
+# --- Conda ---
+environment/.conda/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# NOTE: results/figures and results/tables are intentionally TRACKED — they are
+# the portfolio output. Sample-metadata CSVs are tracked. The rendered
+# analysis.html is tracked so reviewers can read reports without rebuilding.
