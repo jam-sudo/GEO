@@ -3,6 +3,13 @@
 > One-sentence summary of the dataset and the comparison, readable by a
 > non-specialist. *Replace this line.*
 
+## Suitability review
+
+A written suitability review is completed **before** any analysis code — see
+[`notes/suitability.md`](notes/suitability.md) for the organism/assay/platform
+inventory, data-type determination, chosen DE method, cleaned-metadata plan,
+assumptions log, and the go/no-go decision.
+
 ## Biological question
 
 *What is being compared, in what system, and why does it matter?*

@@ -21,9 +21,14 @@ requires raw integer counts.** Every project therefore runs
 
 ## Standard workflow per dataset
 
+0. **Suitability review (gate, before any code)** — inspect the GEO record and
+   fill `notes/suitability.md`: organism, assay, platform, sample count, file
+   inventory, data-type determination, the statistically appropriate DE method,
+   a cleaned metadata plan, an assumptions log, and a go/no-go decision. Group
+   labels come from `characteristics_ch1.*` fields, never from sample titles.
 1. **Acquire** — `fetch_geo()` downloads the series matrix + supplementary files
    and writes sample metadata to disk verbatim. Metadata is never invented.
-2. **Assess** — `assess_data_type()` returns the verdict above.
+2. **Assess** — `assess_data_type()` confirms the verdict programmatically.
 3. **Inspect design** — `summarize_samples()` + `propose_contrasts()` surface
    grouping columns and valid pairwise comparisons; the analyst picks a
    biologically meaningful contrast and an explicit design formula.
