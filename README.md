@@ -49,23 +49,26 @@ decided from evidence — file inventory, value ranges, `characteristics` fields
 
 ```
 ├── README.md                      # this file
+├── .gitattributes                 # keep rendered HTML out of GitHub language stats
 ├── docs/
 │   ├── TRIAGE.md                  # cross-dataset comparison (the headline)
 │   ├── triage.csv                 # machine-readable triage table
+│   ├── cli.md                     # full `geo` CLI reference
 │   └── README.md                  # methodology & conventions
 ├── Makefile                       # make triage / env / new / render
 ├── environment/environment.yml    # pinned R + Bioconductor + Quarto (mamba)
 ├── pyproject.toml                 # installs the `geo` CLI (console script)
 ├── geo_portfolio/                 # Python CLI / orchestration layer (no analysis logic)
-│   ├── cli.py  fetch.py  parse.py  suitability.py  report.py  scaffold.py  runner.py
+│   └── cli.py  fetch.py  parse.py  suitability.py  report.py  scaffold.py  runner.py
 ├── tests/                         # CLI + triage unit tests (+ live tests, marked)
+├── examples/                      # accessions.txt + sample triage reports (geo batch)
 ├── scripts/
 │   ├── geo_helpers.R              # reusable analysis engine (incl. the data-type gate)
 │   ├── build_triage.R             # aggregate suitability records -> TRIAGE.md
 │   └── new_project.R              # scaffold a project from the template
 ├── templates/project_template/    # SUITABILITY.md + analysis.qmd + skeleton
-└── projects/
-    └── GSE157830/
+└── projects/                      # one folder per dataset (GSE157830, GSE60450,
+    └── GSE157830/                 #                        GSE78220, GSE2034)
         ├── SUITABILITY.md         # the triage report (decision gate)
         ├── README.md              # question, methods, results, interpretation, limits
         ├── analysis.qmd           # reproducible DE report
@@ -87,6 +90,9 @@ make triage
 # Analyze only datasets whose decision is "include".
 make render PROJ=GSE123456
 ```
+
+Prefer a single terminal command per step? The **`geo` CLI below** does triage,
+scaffolding, and running without the Makefile.
 
 ## Command-line interface: `geo`
 
@@ -110,9 +116,12 @@ geo --help
 geo triage GSE157830                                            # decide, print summary
 geo triage GSE157830 --out examples/reports/GSE157830 --format markdown,json
 geo batch examples/accessions.txt --out examples/reports        # many at once + summary
-geo init-project GSE157830 --out projects/GSE157830 --with-triage-report
+geo init-project GSE123456 --with-triage-report                 # scaffold a NEW dataset
 geo run GSE157830 --project projects/GSE157830                  # gated on triage = include
 ```
+
+(`init-project`/`scaffold` refuse to overwrite an existing project without
+`--force`, so the examples use a fresh accession.)
 
 ### Example output
 
