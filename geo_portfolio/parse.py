@@ -37,6 +37,7 @@ class GeoMetadata:
     platform_title: str = ""
     organisms: List[str] = field(default_factory=list)
     series_supplementary_files: List[str] = field(default_factory=list)
+    series_supplementary_urls: List[str] = field(default_factory=list)
     samples: List[Sample] = field(default_factory=list)
 
     @property
@@ -101,6 +102,9 @@ def parse_soft(text: str) -> GeoMetadata:
                 meta.series_type = (meta.series_type + "; " + val).strip("; ") if meta.series_type else val
             elif key == "!Series_supplementary_file":
                 meta.series_supplementary_files.append(_basename(val))
+                # keep the full URL (https) so the data downloader can fetch it
+                meta.series_supplementary_urls.append(
+                    val.replace("ftp://", "https://", 1) if val.startswith("ftp://") else val)
             elif key in ("!Series_platform_id",):
                 meta.platform_id = val
             elif key == "!Platform_title":

@@ -142,18 +142,32 @@ pip install -e .            # console script is exactly: geo
 geo --help
 ```
 
-### Example commands
+### One command end-to-end
+
+```bash
+geo pipeline GSE157830        # triage → scaffold → download counts → run, in one go
+```
+
+`pipeline` collapses the whole flow into a single command, but stays
+conservative: it stops at the gate for `exclude`, never overwrites a curated
+project without `--force`, auto-downloads the detected raw-count file, and only
+auto-runs DESeq2 when `analysis.qmd` has actually been curated (otherwise it
+prints the curation steps). For an already-curated dataset it is a true one-shot
+reproduce.
+
+### Or the individual commands
 
 ```bash
 geo triage GSE157830                                            # decide, print summary
 geo triage GSE157830 --out examples/reports/GSE157830 --format markdown,json
 geo batch examples/accessions.txt --out examples/reports        # many at once + summary
+geo data GSE157830                                              # download the count matrix
 geo init-project GSE123456 --with-triage-report                 # scaffold a NEW dataset
 geo run GSE157830 --project projects/GSE157830                  # gated on triage = include
 ```
 
-(`init-project`/`scaffold` refuse to overwrite an existing project without
-`--force`, so the examples use a fresh accession.)
+(`scaffold`/`init-project`/`pipeline` refuse to overwrite an existing project
+without `--force`, so the new-dataset example uses a fresh accession.)
 
 ### Example output
 

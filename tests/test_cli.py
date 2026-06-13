@@ -90,3 +90,53 @@ def test_run_refuses_without_triage(tmp_path, monkeypatch):
     res = runner.invoke(cli.app, ["run", "GSE157830", "--project", str(out), "--dry-run"])
     assert res.exit_code == 1
     assert "Cannot run" in res.output or "decision" in res.output.lower()
+
+
+@pytest.fixture
+def no_network_download(monkeypatch):
+    """Stub the count downloader so pipeline/data tests stay offline."""
+    def _fake(meta, project_dir, overwrite=False, progress=None):
+        p = Path(project_dir) / "data" / "raw" / "counts.txt.gz"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"x")
+        return [p]
+    monkeypatch.setattr(cli, "download_counts", _fake)
+    return _fake
+
+
+def test_pipeline_excludes_stops(fake_fetch, no_network_download):
+    res = runner.invoke(cli.app, ["pipeline", "GSE2034", "--yes"])
+    assert res.exit_code == 1
+    assert "Stopping" in res.output
+
+
+def test_pipeline_scaffolds_and_guides_when_uncurated(fake_fetch, no_network_download, tmp_path, monkeypatch):
+    repo_root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(repo_root)
+    out = tmp_path / "GSE157830"
+    res = runner.invoke(cli.app, ["pipeline", "GSE157830", "--out", str(out), "--yes"])
+    assert res.exit_code == 0, res.output
+    assert (out / "analysis.qmd").exists()
+    assert (out / "SUITABILITY.md").exists()
+    # scaffolded qmd is still the template -> pipeline must guide, not run
+    assert "Next steps" in res.output
+
+
+def test_pipeline_keeps_existing_project(fake_fetch, no_network_download, tmp_path, monkeypatch):
+    repo_root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(repo_root)
+    out = tmp_path / "GSE157830"
+    out.mkdir()
+    # contains the template marker (treated as uncurated) + a sentinel to detect overwrite
+    (out / "analysis.qmd").write_text("# MY CUSTOM FILE\nSet the count-loading code for this dataset.\n")
+    res = runner.invoke(cli.app, ["pipeline", "GSE157830", "--out", str(out), "--yes"])
+    assert res.exit_code == 0, res.output
+    # existing project preserved (not overwritten by the template)
+    assert "MY CUSTOM FILE" in (out / "analysis.qmd").read_text()
+    assert "keeping it" in res.output
+
+
+def test_data_command(fake_fetch, no_network_download, tmp_path):
+    res = runner.invoke(cli.app, ["data", "GSE157830", "--project", str(tmp_path)])
+    assert res.exit_code == 0, res.output
+    assert (tmp_path / "data" / "raw" / "counts.txt.gz").exists()

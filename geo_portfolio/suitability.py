@@ -84,10 +84,12 @@ _FACTOR_KEYWORDS = {
     "genotype": ["genotype", "variation", "knockdown", "knockout", "shrna", "sirna", "crispr",
                  "mutation", "transfect", "guide", "overexpress"],
     "disease": ["disease", "diagnosis", "tumor", "tumour", "cancer", "status", "condition",
-                "subtype", "grade", "stage", "phenotype", "response"],
-    "timepoint": ["time", "day", "hour", " hr", "week", "passage", "age"],
+                "subtype", "grade", "response"],
+    "timepoint": ["time", "day", "hour", " hr", "week", "passage", "age",
+                  "stage", "development", "developmental"],
     "tissue": ["tissue", "organ", "anatomic", "biopsy", "site", "location"],
-    "cell_line": ["cell line", "cell type", "cell-line", "cell_line"],
+    "cell_line": ["cell line", "cell type", "cell-line", "cell_line",
+                  "immunophenotype", "phenotype", "population", "lineage"],
     "batch": ["batch", "replicate", "run", "lane", "donor", "patient", "individual", "subject"],
 }
 
@@ -178,7 +180,7 @@ def _pick_grouping_factor(factors: List[Factor]) -> Optional[Factor]:
     usable = [f for f in factors if not f.ambiguous and f.n_levels >= 2]
     if not usable:
         return None
-    priority = ["genotype", "treatment", "disease", "timepoint", "tissue", "cell_line"]
+    priority = ["genotype", "treatment", "disease", "tissue", "cell_line", "timepoint"]
     usable.sort(key=lambda f: (priority.index(f.name) if f.name in priority else 99, f.n_levels))
     return usable[0]
 

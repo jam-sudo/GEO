@@ -22,11 +22,43 @@ The console script is exactly `geo` (defined in `pyproject.toml`:
 
 | Command | Purpose |
 |---------|---------|
+| **`geo pipeline <ACC>`** | **One command: triage → scaffold → download counts → run** |
 | `geo triage <ACC>` | Triage one accession; print summary, optionally write reports |
 | `geo batch <file>` | Triage many accessions; per-accession reports + summary CSV/MD |
+| `geo data <ACC>` | Download the detected raw-count file into `data/raw/` |
 | `geo scaffold <ACC>` | Create a project from the existing template |
 | `geo init-project <ACC> --with-triage-report` | Scaffold + embed a generated triage report as `SUITABILITY.md` |
 | `geo run <ACC>` | Render the existing `analysis.qmd` (refuses unless triage = `include`) |
+
+### `geo pipeline` — the one-command workflow
+
+```bash
+geo pipeline GSE157830           # triage → scaffold → download counts → run, with prompts
+geo pipeline GSE157830 --yes     # no prompts
+geo pipeline GSE157830 --dry-run # show the render command instead of running
+```
+
+Collapses the whole flow into one command, but stays conservative:
+
+- **Stops at the gate** for `exclude` (and asks before scaffolding a `conditional`).
+- **Auto-downloads** the raw-count file triage detected (gene-level preferred); for FPKM-only/microarray it says so instead.
+- **Never overwrites a curated project** without `--force` (which still asks first).
+- **Only auto-runs DESeq2 when `analysis.qmd` has been curated** (the template placeholder removed). For a freshly scaffolded project it prints the curation steps instead of running a meaningless template.
+
+So for an already-curated dataset, `geo pipeline <ACC>` is a true one-shot
+reproduce; for a new dataset it does the mechanical setup and hands off the
+scientific curation.
+
+### `geo data` — fetch the count matrix
+
+```bash
+geo data GSE157830                       # into projects/GSE157830/data/raw/
+geo data GSE157830 --project some/dir --overwrite
+```
+
+Downloads the series supplementary file(s) that triage classified as raw counts
+(never FPKM/TPM). Errors clearly when GEO has no raw-count file (e.g. FPKM-only
+deposits like GSE78220 — use recount3 instead).
 
 ### `geo triage`
 
@@ -87,12 +119,17 @@ Quarto/DESeq2 analysis. The CLI adds orchestration, not a second analysis stack.
 Recommended portfolio loop:
 
 ```bash
-geo triage GSE123456 --out examples/reports/GSE123456     # decide
-geo init-project GSE123456 --with-triage-report           # scaffold (if include/conditional)
-#   ... curate SUITABILITY.md / analysis.qmd as needed ...
+# Fast path — one command does triage + scaffold + data download, then guides:
+geo pipeline GSE123456
+
+#   ... curate projects/GSE123456/analysis.qmd (count loading, design, contrast) ...
+
 Rscript scripts/build_triage.R                            # refresh docs/TRIAGE.md
-geo run GSE123456                                         # analyze (include only)
+geo pipeline GSE123456                                    # now auto-runs (curated + include)
 ```
+
+Or step by step (`triage` → `init-project` → `data` → `run`) if you prefer
+explicit control — see the command table above.
 
 ## Scientific constraints (enforced)
 

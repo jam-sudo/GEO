@@ -12,12 +12,23 @@ from rich.panel import Panel
 from rich.table import Table
 
 from . import __version__
+from .data import DataDownloadError, download_counts, raw_count_urls
 from .fetch import GeoFetchError, fetch_soft, validate_accession
 from .parse import parse_soft
 from .report import build_record, to_json, to_markdown
 from .runner import RunError, run_analysis
 from .scaffold import ScaffoldError, scaffold_project, write_triage_into_project
 from .suitability import assess, orgdb_for
+
+TEMPLATE_MARKER = "Set the count-loading code for this dataset."
+
+
+def _is_curated_qmd(project_dir: Path) -> bool:
+    """True if analysis.qmd has been customized (template placeholder removed)."""
+    qmd = Path(project_dir) / "analysis.qmd"
+    if not qmd.exists():
+        return False
+    return TEMPLATE_MARKER not in qmd.read_text(encoding="utf-8")
 
 app = typer.Typer(
     add_completion=False,
@@ -283,6 +294,115 @@ def run(
         console.print("[dim]dry-run, would execute:[/dim] " + " ".join(cmd))
     else:
         console.print(f"[green]✓[/green] rendered {project_dir}/analysis.qmd")
+
+
+@app.command()
+def data(
+    accession: str = typer.Argument(..., help="GEO series accession"),
+    project: Optional[Path] = typer.Option(None, "--project", help="Project dir (default projects/<ACC>)"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Re-download even if the file exists"),
+    refresh: bool = typer.Option(False, "--refresh", help="Bypass the metadata cache"),
+    cache_dir: str = typer.Option(".geo_cache", "--cache-dir"),
+):
+    """Download the raw count matrix GEO triage detected into the project's data/raw/."""
+    if not validate_accession(accession):
+        err_console.print(f"[red]Invalid accession[/red] '{accession}'.")
+        raise typer.Exit(2)
+    project_dir = project or Path("projects") / accession
+    try:
+        meta = parse_soft(fetch_soft(accession, cache_dir=cache_dir, refresh=refresh))
+        paths = download_counts(meta, project_dir, overwrite=overwrite,
+                                progress=lambda m: console.print(f"  [dim]{m}[/dim]"))
+    except (GeoFetchError, DataDownloadError) as exc:
+        err_console.print(f"[red]Data download failed:[/red] {exc}")
+        raise typer.Exit(1)
+    for p in paths:
+        console.print(f"  [green]✓[/green] {p}")
+
+
+@app.command()
+def pipeline(
+    accession: str = typer.Argument(..., help="GEO series accession"),
+    out: Optional[Path] = typer.Option(None, "--out", help="Project dir (default projects/<ACC>)"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompts"),
+    force: bool = typer.Option(False, "--force", help="Overwrite an existing project (asks first)"),
+    env: str = typer.Option("geo-rnaseq", "--env", help="mamba environment for the render"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show the render command without running"),
+    refresh: bool = typer.Option(False, "--refresh"),
+    cache_dir: str = typer.Option(".geo_cache", "--cache-dir"),
+):
+    """End-to-end: triage → scaffold → download counts → run (one command).
+
+    Conservative: stops at the triage gate for exclude/conditional, never
+    overwrites a curated project without --force, and only auto-runs DESeq2 when
+    the project's analysis.qmd has actually been customized.
+    """
+    if not validate_accession(accession):
+        err_console.print(f"[red]Invalid accession[/red] '{accession}'.")
+        raise typer.Exit(2)
+    out_dir = out or Path("projects") / accession
+
+    # 1) Triage.
+    try:
+        meta, suit, record = _triage_one(accession, cache_dir, refresh)
+    except GeoFetchError as exc:
+        err_console.print(f"[red]Fetch failed:[/red] {exc}")
+        raise typer.Exit(1)
+    _print_triage(record)
+
+    # 2) Gate.
+    if suit.decision == "exclude":
+        err_console.print(f"[red]Stopping:[/red] {suit.next_action}")
+        raise typer.Exit(1)
+    if suit.decision == "conditional":
+        console.print(f"[yellow]Conditional[/yellow] — {suit.next_action}")
+        if not (yes or typer.confirm("Scaffold anyway (to document it), without running?", default=True)):
+            raise typer.Exit(0)
+
+    # 3) Scaffold (preserve an existing curated project unless --force).
+    organism_db = orgdb_for(meta)
+    exists = out_dir.exists()
+    if exists and not force:
+        console.print(f"[dim]Project {out_dir} already exists — keeping it (use --force to rebuild).[/dim]")
+    else:
+        if exists and force and not yes:
+            if not typer.confirm(f"Overwrite template files in {out_dir}?", default=False):
+                raise typer.Exit(0)
+        try:
+            scaffold_project(accession, out_dir, organism_db=organism_db, force=force)
+            write_triage_into_project(out_dir, to_markdown(meta, suit), to_json(meta, suit), accession)
+            console.print(f"  [green]✓[/green] scaffolded {out_dir} (org={organism_db})")
+        except ScaffoldError as exc:
+            err_console.print(f"[red]Scaffold failed:[/red] {exc}")
+            raise typer.Exit(1)
+
+    # 4) Download counts (safe; only when raw counts were detected).
+    if raw_count_urls(meta):
+        try:
+            paths = download_counts(meta, out_dir, progress=lambda m: console.print(f"  [dim]{m}[/dim]"))
+            for p in paths:
+                console.print(f"  [green]✓[/green] data: {p}")
+        except DataDownloadError as exc:
+            console.print(f"  [yellow]⚠[/yellow] {exc}")
+    else:
+        console.print("  [yellow]⚠[/yellow] No raw-count file to download (FPKM-only or SRA/recount3).")
+
+    # 5) Run, or guide.
+    curated = _is_curated_qmd(out_dir)
+    if suit.decision == "include" and curated:
+        console.print("\n[bold]Running analysis…[/bold]")
+        try:
+            cmd = run_analysis(out_dir, env=env, dry_run=dry_run)
+        except RunError as exc:
+            err_console.print(f"[red]Run failed:[/red] {exc}")
+            raise typer.Exit(1)
+        console.print(("[dim]dry-run:[/dim] " + " ".join(cmd)) if dry_run
+                      else f"[green]✓[/green] rendered {out_dir}/analysis.html")
+    else:
+        console.print("\n[bold]Next steps[/bold] (analysis needs curation before DESeq2):")
+        console.print(f"  1. Edit [cyan]{out_dir}/analysis.qmd[/cyan] — count loading, design, contrast.")
+        console.print(f"  2. Review [cyan]{out_dir}/SUITABILITY.md[/cyan].")
+        console.print(f"  3. Run:  [cyan]geo run {accession}[/cyan]   (or re-run this pipeline).")
 
 
 @app.callback(invoke_without_command=True)
